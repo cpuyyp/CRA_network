@@ -17,21 +17,36 @@ import pickle
 
 # In[2]:
 
+def readDataFrame(file_name):
+	df = pd.read_csv(file_name, index_col=False)
+	#print(df.head())
+	#print(df.columns)
+	cols = df.columns
+	df = df.drop(columns=[cols[0], cols[1]]) 
+	#print("dropped")
+	#print(df.head())
+	df['Sent'] = pd.to_datetime(df['Sent'])
+	df = df[df['Sent'] > datetime(1900, 1, 1, 0, 0, 0)]
+	df = df.reset_index(drop=True)
+	#print("df= ", df)
+	#print("len(df)= ", df.columns())
+	#del df['Unnamed: 0.1']
+	return df
 
-df = pd.read_csv('output4.csv')
-df['Sent'] = pd.to_datetime(df['Sent'])
-df = df[df['Sent']>datetime(1900, 1, 1, 0, 0, 0)]
-df = df.reset_index(drop=True)
-del df['Unnamed: 0.1']
-df
+df = readDataFrame("output4.csv")
 
 
-# In[3]:
+def restrictEmailsToYears(df, low=2013, high=2014):
+	# restrict emails
+	df = df[df['Sent'] > datetime( low, 1, 1, 0, 0, 0)]
+	#print("df1: ", df.head())
+	df = df[df['Sent'] < datetime(high, 1, 1, 0, 0, 0)]
+	#print("df2: ", df.head())
+	return df
 
-
-# restrict emails
-df = df[df['Sent']<datetime(2014, 1, 1, 0, 0, 0)]
-df = df[df['Sent']>datetime(2013, 1, 1, 0, 0, 0)]
+df = restrictEmailsToYears(df, low=2013, high=2014)
+#print(df.head())
+#quit()
 
 
 # In[4]:
@@ -74,6 +89,7 @@ def standardize_name(string): # for now, only keep names
         return
 #         return string.strip()
 standardize_name(k)
+#print(k, standardize_name(k))
 
 
 # In[5]:
@@ -83,10 +99,23 @@ email_dic = {}
 max_nb_recipients = 10
 max_nb_cc = 10
 
-for idx, dataslice in enumerate(df.itertuples()):
+FROM = 1 
+SENT = 2
+TO   = 3 
+CC   = 4 
+SUBJ = 5 
+ATTCH= 6 
+BODY = 7 
+#print(df.iloc[:,:])
+print(df.columns)
+# Index(['From', 'Sent', 'To', 'CC', 'Subject', 'Attachments', 'Body'], dtype='object')
+
+#for idx, dataslice in enumerate(df.itertuples()):
+for row in df.itertuples():
     standardized_name = []
 #   print(dataslice[4])
-    recipient_list = dataslice[4][2:-2].replace("'",'').strip().split(';')
+    #recipient_list = dataslice[4][2:-2].replace("'",'').strip().split(';')
+    recipient_list = row[TO][2:-2].replace("'",'').strip().split(';')
 
     for person in recipient_list:
 #         print(person)
@@ -94,29 +123,42 @@ for idx, dataslice in enumerate(df.itertuples()):
         standardized_name.append(standardize_name(person))
 #         print(standardize_name(person))
 
-    cc_list = dataslice[5][2:-2].replace("'",'').strip().split(';')
+    #cc_list = dataslice[5][2:-2].replace("'",'').strip().split(';')
+    cc_list = row[CC][2:-2].replace("'",'').strip().split(';')
     for person in cc_list:
         if len(cc_list) > max_nb_cc: break
         if person != '':
             standardized_name.append(standardize_name(person))
 
     for name in standardized_name:
-        if standardize_name(dataslice[2]) not in email_dic:
-            email_dic[standardize_name(dataslice[2])] = []
-        if standardize_name(dataslice[2]) != None:
-            if name!=None:
-                email_dic[standardize_name(dataslice[2])].append([name,dataslice[3]])
-with open('email_dic.pickle', 'wb') as handle:
-    pickle.dump(email_dic, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if standardize_name(row[FROM]) not in email_dic:
+            email_dic[standardize_name(row[FROM])] = []
+        if standardize_name(row[FROM]) != None:
+            if name != None:
+                #email_dic[standardize_name(dataslice[2])].append([name,dataslice[3]])
+                email_dic[standardize_name(row[FROM])].append([name,row[SENT]])
 
+#print(email_dic)
+#quit()
+
+def saveData(file_name, email_dic):
+	with open('email_dic.pickle', 'wb') as handle:
+		pickle.dump(email_dic, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+saveData('email_dic.pickle', email_dic)
 
 # In[6]:
 
 
 # the key of the dictionary is sender's name, the value coresponds to the key is the recipient's name and sent time.
-with open('email_dic.pickle', 'rb') as handle:
-    email_dic = pickle.load(handle)
-email_dic_c = email_dic.copy()
+def loadData(file_name):
+	with open('email_dic.pickle', 'rb') as handle:
+		email_dic = pickle.load(handle)
+	return  email_dic.copy()
+
+email_dic_c = loadData('email_dic.pickle')
+quit()
+#----------------------------------------------------------------------
 
 
 # In[10]:
@@ -143,6 +185,9 @@ len(unique_names)
 # In[11]:
 
 
+print(type(unique_names))
+print(dir(unique_names))
+print(unique_names)
 unique_names.remove(None)
 unique_names.sort()
 unique_names[-100:]
