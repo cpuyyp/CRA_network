@@ -213,33 +213,25 @@ to = df['To']
 cc = df['CC']
 sender = df['From']
 
-def cleanRecipients(df):
-    print("==== CLEAN RECIPIENTS  ===================")
+#----------------------------------------------------------------------
+def cleanDFColumn(df, col_name ):
     recipients = []
-    for rec in df['To']:
-        print("=========================================")
-        print("rec= ", rec)
+    for rec in df[col_name]:
         recipient_string = rec[2:-2].replace("'",'')
-        #if re.search("Osteen|osteen", recipient_string):
         if re.search("tosteen@moorebass.com", recipient_string):
             flag = True
-            #print(recipient_string); quit()
         else: 
             flag = False
         r1 = recipient_string.split(';')
 
         if len(r1) > 1:
-            db = 0
             recipient_list = r1
         elif len(r1) == 1:
-           db = 1
            r2 = recipient_string.split(',') 
            if len(r2) == 1:
-              db = 2
               recipient_list = r2
               # no further splits necessary. Single name or single email. Pass to standardize_name2()
            else:  # If there are double quotes, remove commas from double quotes, 
-               db = 3
                # if the recipient list is all letters, spaces, "-", "." and commas, 
                # then we are dealing with a single user name.
                # pattern = r"[A-Za-z\._-,\s]+" 
@@ -248,35 +240,24 @@ def cleanRecipients(df):
                #print("recipient_list= ", recipient_list)
                m = re.search(pattern, recipient_string)
                if m:  # person's name
-                   db = 4
                    recipient_list = [recipient_string]
                else:
-                   db = 5
                    print("-----------------------------------------")
                    #print("recipient_string= ", recipient_string)
                    #pattern = r"(\b\w+\b),(\b\w_\b)"
                    pattern = r"\s*\w+\s*,\s*\w+\s*"
                    m = re.search(pattern, recipient_string)
                    if not m:
-                       db = 6
-                       #print("m= ", m)
-                       # Split via comma
                        recipient_list = recipient_string.split(',') 
                        #print("recipient_list= ", recipient_list)
                    else:
-                       db = 7
                        nb_commas = len(re.findall(",", recipient_string))
                        print("nb commas= ", nb_commas)
                        if nb_commas > 2:  # not foolproof. There might be only two emails. 
                            recipient_list = recipient_string.split(',')
                        else:
                            recipient_list = [recipient_string]
-                       print("dbg=7, ", recipient_string)
                        # Separate by commas
-        print(".... recipient_list= ", recipient_list)
-        #print(".... dbg= ", db)
-        #if flag: quit()
-        #continue
         #-------------------
 
         # At this stage, recipient_list is the list of recipients
@@ -291,18 +272,10 @@ def cleanRecipients(df):
             #print("f,m,l= ", [f,m,l])
         recipients.append(recipient_list)
         #if flag: quit()
-    df[TO] = recipients
+    df[col_name] = recipients
+    return df
 
-def cleanCCs(df):
-    ccs = []
-    for rec in df['CC']:
-        cc_list = rec[2:-2].replace("'",'').split(';')  # removed strip
-        for i, person in enumerate(cc_list):
-            email, new_str = extract_email(person)
-            f, m, l = standardize_name2(new_str)
-            cc_list[i] = (f,l,email)
-        ccs.append(cc_list)
-    df[CC] = ccs
+#----------------------------------------------------------------------
 
 def cleanSenders(df):
     senders = []
@@ -315,32 +288,36 @@ def cleanSenders(df):
         senders.append((f,l,email))  # ignore the middle initials
     df[FROM] = senders
 
-cleanRecipients(df)
-print("gordon END")
-#cleanCCs(df)
+cleanDFColumn(df, 'To')
+cleanDFColumn(df, 'CC')
 #cleanSenders(df)
 
-print("---------------")
-#print(df[[FROM,TO,CC]].head(20))
-#print("From:\n", df[FROM].head(20))
-#print("To:\n", df[TO].head(200))
-#print("CC:\n", df[CC].head(200))
-
 s = set()
-to_list = df[TO].values
+print(df.columns)
+to_list = df['To'].values
+#------------------
+print("==================================")
+print("== Column 'To' =====================")
 for i, lst in enumerate(to_list):
    #rec = df[TO].iloc[i].values
    print("--- i= ", i, " ------")
    for r in lst:
-       print("xyz    ", r)
+       print("to:    ", r)
    #print(df[TO].iloc[i])
    #s.add(df[TO].iloc[i])
+#------------------
+print("==================================")
+print("== Column 'CC' =====================")
+for i, lst in enumerate(to_list):
+   print("--- i= ", i, " ------")
+   for r in lst:
+       print("cc:    ", r)
+quit()
 
 #print("len(df[FROM])= ", len(df[TO].values))
 print("len(set)= ", len(s))
 
 quit()
-
 
 
 # compute email_dict: 
