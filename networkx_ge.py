@@ -84,78 +84,27 @@ name_tests = ['Administration-Thomas Harrison <Abc.abc@gmail.com>',
 # Remove "?([mailto:.*])" (shortest string)
 # Remove "?(<i.*>)" (shortest string)
 # Identify commas:   Last, First Middle
-re_name1 = re.compile(r'([A-Z][a-z]+)\s?[A-Z]?\.?\s?([A-Z][a-z]+\s?[A-Z]?[a-z]+)')
-re_name2 = re.compile(r'([A-Z][a-z]+),\s?[A-Z]?\'?([A-Z][a-z]+)\s?[A-Z]?\.?')
-re_name3 = re.compile(r'([A-Z]+?)\s?([A-Z]?[a-z]+)\s?[\[\(]?.*\@.*[\)\]]?')
+# orig
+#re_name1 = re.compile(r'([A-Z][a-z]+)\s?[A-Z]?\.?\s?([A-Z][a-z]+\s?[A-Z]?[a-z]+)')
+#re_name2 = re.compile(r'([A-Z][a-z]+),\s?[A-Z]?\'?([A-Z][a-z]+)\s?[A-Z]?\.?')
+#re_name3 = re.compile(r'([A-Z]+?)\s?([A-Z]?[a-z]+)\s?[\[\(]?.*\@.*[\)\]]?')
 
-re_email_orig = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[0-9a-zA-Z_-]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})') # works
+#re_email_orig = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[0-9a-zA-Z_-]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})') # works
 # The following defition allows double dots in the emai. But since we are scanning emails that have 
 # been sent, we will ignore this issue. 
 # WHY the ".*?" at the beginning of the string. That makes the match start at the start of the strong
 #re_email = re.compile(r'.*?([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
 re_email = re.compile(r'([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
 #orig re_email = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})')
-
-def standardize_name(string): # for now, only keep names
-    #string = string.lower()
-    if re_name1.match(string):
-#         print(1)
-        return re_name1.findall(string)[0][0]+' '+re_name1.findall(string)[0][1]
-    elif re_name2.match(string):
-#         print(2)   
-        return re_name2.findall(string)[0][1].strip()+' '+re_name2.findall(string)[0][0]
-    elif re_name3.match(string):
-#         print(3)
-        return re_name3.findall(string)[0][0].strip()+' '+re_name3.findall(string)[0][1]
-#    elif re_email.match(string.lower()):
-#         print(4)
-#         return re_email.findall(string.lower())[0].strip()
-    # From emailregex.com
-    elif re_email1.match(string.lower()):
-        return re_email1.findall(string)
-    else:
-        return
-#         return string.strip()
-#print(k, standardize_name(k))
-
-re_email_orig = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[0-9a-zA-Z_-]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})') # works
-# The following defition allows double dots in the emai. But since we are scanning emails that have 
-# been sent, we will ignore this issue. 
-# WHY the ".*?" at the beginning of the string. That makes the match start at the start of the strong
-#re_email = re.compile(r'.*?([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
-re_email = re.compile(r'([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
-#orig re_email = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})')
-
-def standardize_name(string): # for now, only keep names
-    #string = string.lower()
-    if re_name1.match(string):
-#         print(1)
-        return re_name1.findall(string)[0][0]+' '+re_name1.findall(string)[0][1]
-    elif re_name2.match(string):
-#         print(2)   
-        return re_name2.findall(string)[0][1].strip()+' '+re_name2.findall(string)[0][0]
-    elif re_name3.match(string):
-#         print(3)
-        return re_name3.findall(string)[0][0].strip()+' '+re_name3.findall(string)[0][1]
-#    elif re_email.match(string.lower()):
-#         print(4)
-#         return re_email.findall(string.lower())[0].strip()
-    # From emailregex.com
-    elif re_email1.match(string.lower()):
-        return re_email1.findall(string)
-    else:
-        return
-#         return string.strip()
-#print(k, standardize_name(k))
 
 def extract_email(string):
     # Only keep first email found, and remove it from the string
-    #print("orig string= ", string)
+    print("orig string= ", string)
     s = re_email.search(string)
     #print("search: ", s)
     #print("dir(s): ", dir(s))
     #m = re_email.match(string)
-    m = re.match(re_email, string)
+    #    m = re.match(re_email, string)
     #print("match: ", m)
     ##print("m.groups= ", m.groups())
     #print("dir(m): ", dir(m))
@@ -181,29 +130,9 @@ def extract_email(string):
     #print("new string= ", string)
     return email, string
 
-#def extract_name(string)
-
-
-
-def standardize_name1(string): 
-    #string = string.lower()
-    print("string: ", string)
-    if re_name1.match(string):
-         print("name1: ", re_name1.findall(string))
-         print("name1: ", re_name1.findall(string)[0][0]+' '+re_name1.findall(string)[0][1])
-
-    if re_name2.match(string):
-         print("name2: ", re_name2.findall(string))
-         print("name2: ", re_name2.findall(string)[0][1].strip()+' '+re_name2.findall(string)[0][0])
-
-    if re_name3.match(string):
-         print("name3: ", re_name3.findall(string))
-         print("name3: ", re_name3.findall(string)[0][0].strip()+' '+re_name3.findall(string)[0][1])
-    print("------------\n")
 
 def standardize_name2(string): 
 # The emails have already been removed. All that is left is a single person's name
-    #print("name to standardize: ", string, len(string.strip()))
     print("standardize string: ", string)
     if len(string) == 0:
         return '', '', ''
@@ -211,40 +140,26 @@ def standardize_name2(string):
     # remove commas and dots
     string = re.sub(r"[\.\"]", "", string)
 
-    #strings = re.split(r"\W+", string)
-    #strings = [s.strip() for s in strings]
-    #if strings[0] == '': 
-        #strings.remove('')
-
     strings = string.split(',')
-
-    #print("strings= ", strings)
     first = last = middle = ''
 
     if len(strings) == 1:
         strings1 = strings[0].split(' ')
-        print("len(strings)==1, strings= ", strings, ",  strings1= ", strings1)
         lg = len(strings1)
         # remove empty strings
         if lg == 1:
-            #print("lg=1, strings= ", strings, ", strings1= ", strings1)
             pass
         elif lg == 2:
-            #print("lg=2, strings= ", strings, ", strings1= ", strings1)
             first = strings1[0]
             middle = ''
             last = strings1[1]
         elif lg > 2:
-            #print("lg>2, strings= ", strings, ", strings1= ", strings1)
             first = strings1[0]
             middle = " ".join(strings1[1:-1])
             middle = re.sub(r"\.", "", middle)
             last  = strings1[-1]
-            #print("first, middle, last= ", first, middle, last)
-        #print("length=1, strings= ", strings1)
 
     elif len(strings) == 2:
-        #print("length=2, strings= ", strings)
         last = strings[0]
         first = strings[1].strip()  # could contain middle initial
         first = re.sub(r"\.", "", first) # remove dots
@@ -254,18 +169,11 @@ def standardize_name2(string):
 
     elif len(strings) > 2:
         print("length(strings)>2, should not happen: ", strings)
-        quit()
+        #quit()
 
-    #print("stripped: first: ", "x%s" % first)
-    print("return: ", (first, middle, last))
     return first.strip(), middle.strip(), last.strip()
 
 
-
-#for n in name_tests:
-    #print(n, " +++ ", standardize_name(n))
-    #standardize_name1(n)
-#quit()
 
 df = readDataFrame("output4.csv")
 df = restrictEmailsToYears(df, low=2013, high=2014)
@@ -302,14 +210,55 @@ cc = df['CC']
 sender = df['From']
 
 def cleanRecipients(df):
+    print("==== CLEAN RECIPIENTS  ===================")
     recipients = []
     for rec in df['To']:
-        recipient_list = rec[2:-2].replace("'",'').split(';')
+        print("=========================================")
+        print("rec= ", rec)
+        recipient_string = rec[2:-2].replace("'",'')
+        r1 = recipient_string.split(';')
+
+        if len(r1) > 1:
+            recipient_list = r1
+        elif len(r1) == 1:
+           r2 = recipient_string.split(',') 
+           if len(r2) == 1:
+              recipient_list = r2
+              # no further splits necessary. Single name or single email. Pass to standardize_name2()
+           else:  # If there are double quotes, remove commas from double quotes, 
+               # if the recipient list is all letters, spaces, "-", "." and commas, 
+               # then we are dealing with a single user name.
+               # pattern = r"[A-Za-z\._-,\s]+" 
+               # match entire string with letters, comma, "-"
+               pattern = r"(^[A-Za-z, \.]+$)"
+               #print("recipient_list= ", recipient_list)
+               m = re.search(pattern, recipient_string)
+               if m:  # person's name
+                   recipient_list = [recipient_string]
+               else:
+                   print("-----------------------------------------")
+                   #print("recipient_string= ", recipient_string)
+                   #pattern = r"(\b\w+\b),(\b\w_\b)"
+                   pattern = r"\s*\w+\s*,\s*\w+\s*"
+                   m = re.search(pattern, recipient_string)
+                   if not m:
+                       #print("m= ", m)
+                       # Split via comma
+                       recipient_list = recipient_string.split(',') 
+                       #print("recipient_list= ", recipient_list)
+                   else:
+                       recipient_list = [recipient_string]
+        print(".... recipient_list= ", recipient_list)
+        #-------------------
+
+        # At this stage, recipient_list is the list of recipients
+        # to be further processed by extract_mail and standardize_name2
+
         for i, person in enumerate(recipient_list):
-            #standardize_name1(person)
-            email = extract_email(person)
-            print("person: ", person, ",  email: ", email)
-            recipient_list[i] = person.strip()
+            print("person= ", person)
+            email, new_str = extract_email(person)
+            f, m, l = standardize_name2(new_str)
+            recipient_list[i] = (f,l,email)
         recipients.append(recipient_list)
     df[TO] = recipients
 
@@ -318,10 +267,9 @@ def cleanCCs(df):
     for rec in df['CC']:
         cc_list = rec[2:-2].replace("'",'').split(';')  # removed strip
         for i, person in enumerate(cc_list):
-            email = extract_email(person)
-            print("person: ", person, ",  email: ", email)
-            cc_list[i] = person.strip()
-            #cc_list[i] = standardize_name(person)
+            email, new_str = extract_email(person)
+            f, m, l = standardize_name2(new_str)
+            cc_list[i] = (f,l,email)
         ccs.append(cc_list)
     df[CC] = ccs
 
@@ -332,22 +280,33 @@ def cleanSenders(df):
         email, new_str = extract_email(sender)
         f, m, l = standardize_name2(new_str)
         # strip() should not be necessary, but the line with "sheila" has an additional leading space
-		# I do not know why. 
-        senders.append((f,m,l,email))
-        #senders.append(" ".join([f,m,l]).strip())
+        # I do not know why. 
+        senders.append((f,l,email))  # ignore the middle initials
     df[FROM] = senders
 
-#cleanRecipients(df)
+cleanRecipients(df)
 #cleanCCs(df)
-cleanSenders(df)
+#cleanSenders(df)
 
 print("---------------")
 #print(df[[FROM,TO,CC]].head(20))
 #print("From:\n", df[FROM].head(20))
 #print("To:\n", df[TO].head(200))
-#print("CC:\n", df[CC].head(20))
-for i in range(1000):
-   print(df[FROM].iloc[i])
+#print("CC:\n", df[CC].head(200))
+
+s = set()
+to_list = df[TO].values
+for i, lst in enumerate(to_list):
+   #rec = df[TO].iloc[i].values
+   print("--- i= ", i, " ------")
+   for r in lst:
+       print("xyz    ", r)
+   #print(df[TO].iloc[i])
+   #s.add(df[TO].iloc[i])
+
+#print("len(df[FROM])= ", len(df[TO].values))
+print("len(set)= ", len(s))
+
 quit()
 
 
