@@ -18,35 +18,31 @@ import pickle
 # In[2]:
 
 def readDataFrame(file_name):
-	df = pd.read_csv(file_name, index_col=False)
-	#print(df.head())
-	#print(df.columns)
-	cols = df.columns
-	df = df.drop(columns=[cols[0], cols[1]]) 
-	#print("dropped")
-	#print(df.head())
-	df['Sent'] = pd.to_datetime(df['Sent'])
-	df = df[df['Sent'] > datetime(1900, 1, 1, 0, 0, 0)]
-	df = df.reset_index(drop=True)
-	#print("df= ", df)
-	#print("len(df)= ", df.columns())
-	#del df['Unnamed: 0.1']
-	return df
+    df = pd.read_csv(file_name, index_col=False)
+    #print(df.head())
+    #print(df.columns)
+    cols = df.columns
+    df = df.drop(columns=[cols[0], cols[1]]) 
+    #print("dropped")
+    #print(df.head())
+    df['Sent'] = pd.to_datetime(df['Sent'])
+    df = df[df['Sent'] > datetime(1900, 1, 1, 0, 0, 0)]
+    df = df.reset_index(drop=True)
+    #print("df= ", df)
+    #print("len(df)= ", df.columns())
+    #del df['Unnamed: 0.1']
+    return df
 
-df = readDataFrame("output4.csv")
 
 
 def restrictEmailsToYears(df, low=2013, high=2014):
-	# restrict emails
-	df = df[df['Sent'] > datetime( low, 1, 1, 0, 0, 0)]
-	#print("df1: ", df.head())
-	df = df[df['Sent'] < datetime(high, 1, 1, 0, 0, 0)]
-	#print("df2: ", df.head())
-	return df
+    # restrict emails
+    df = df[df['Sent'] > datetime( low, 1, 1, 0, 0, 0)]
+    #print("df1: ", df.head())
+    df = df[df['Sent'] < datetime(high, 1, 1, 0, 0, 0)]
+    #print("df2: ", df.head())
+    return df
 
-df = restrictEmailsToYears(df, low=2013, high=2014)
-#print(df.head())
-#quit()
 
 
 # In[4]:
@@ -92,6 +88,24 @@ standardize_name(k)
 #print(k, standardize_name(k))
 
 
+
+print("a: ", a, " +++++ ", standardize_name(a))
+print("b: ", b, " +++++ ", standardize_name(b))
+print("c: ", c, " +++++ ", standardize_name(c))
+print("d: ", d, " +++++ ", standardize_name(d))
+print("e: ", e, " +++++ ", standardize_name(e))
+print("f: ", f, " +++++ ", standardize_name(f))
+print("g: ", g, " +++++ ", standardize_name(g))
+print("h: ", h, " +++++ ", standardize_name(h))
+print("i: ", i, " +++++ ", standardize_name(i))
+print("j: ", j, " +++++ ", standardize_name(j))
+print("k: ", k, " +++++ ", standardize_name(k))
+print("l: ", l, " +++++ ", standardize_name(l))
+print("m: ", m, " +++++ ", standardize_name(m))
+#quit()
+
+df = readDataFrame("output4.csv")
+df = restrictEmailsToYears(df, low=2013, high=2014)
 # In[5]:
 
 # convert pandas df to dictionary, only keep sender/recipient names and sent time
@@ -110,12 +124,80 @@ BODY = 7
 print(df.columns)
 # Index(['From', 'Sent', 'To', 'CC', 'Subject', 'Attachments', 'Body'], dtype='object')
 
+# Clean the dataframe
+# Replace all senders by their standardized names
+# Replace all TO: by their standardized names
+# Replace all CC: by their standardized names
+
+#def createNameDict(df):
+    #names = df['
+
+#def createEmailDict(df):
+
+to = df['To']
+cc = df['CC']
+sender = df['From']
+
+
+def cleanRecipients(df):
+    recipients = []
+    for rec in df['To']:
+        recipient_list = rec[2:-2].replace("'",'').strip().split(';')
+        for i, person in enumerate(recipient_list):
+            recipient_list[i] = person
+        recipients.append(recipient_list)
+    df[TO] = recipients
+    #print(df[TO])
+
+def cleanCCs(df):
+    ccs = []
+    for rec in df['CC']:
+        cc_list = rec[2:-2].replace("'",'').strip().split(';')
+        for i, person in enumerate(cc_list):
+            cc_list[i] = person
+            #cc_list[i] = standardize_name(person)
+        ccs.append(cc_list)
+    df[CC] = ccs
+    #print(df[CC])
+
+def cleanSenders(df):
+    senders = []
+    for rec in df['From']:
+        sender = rec[1:-1].replace("'",'').strip()
+        senders.append(sender)
+    df[FROM] = senders
+
+cleanRecipients(df)
+cleanCCs(df)
+cleanSenders(df)
+print("---------------")
+print(df[[FROM,TO,CC]].head(20))
+print("From:\n", df[FROM].head(20))
+print("To:\n", df[TO].head(20))
+print("CC:\n", df[CC].head(20))
+quit()
+
+
+
+# compute email_dict: 
 #for idx, dataslice in enumerate(df.itertuples()):
-for row in df.itertuples():
+recipients = []
+print("----------------------------------------")
+for i, row in enumerate(df.itertuples()):
+    print
     standardized_name = []
 #   print(dataslice[4])
     #recipient_list = dataslice[4][2:-2].replace("'",'').strip().split(';')
     recipient_list = row[TO][2:-2].replace("'",'').strip().split(';')
+    if i < 3:
+        print("i= ", i)
+        print(row)
+        print("recipient_list= ", recipient_list)
+        print("row[TO] = ", row[TO])
+        print("row[CC] = ", row[CC])
+    recipients.append(recipient_list)
+
+    continue
 
     for person in recipient_list:
 #         print(person)
@@ -139,11 +221,18 @@ for row in df.itertuples():
                 email_dic[standardize_name(row[FROM])].append([name,row[SENT]])
 
 #print(email_dic)
-#quit()
+#print(recipients)
+print("----------------------------------------")
+print("recipients[0:3]= ", recipients[0:3])
+print("df[TO][0:3]= ", df[TO])
+quit()
+df[TO] = recipients
+print(df.iloc[0:3,TO])
+quit()
 
 def saveData(file_name, email_dic):
-	with open('email_dic.pickle', 'wb') as handle:
-		pickle.dump(email_dic, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open('email_dic.pickle', 'wb') as handle:
+        pickle.dump(email_dic, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 saveData('email_dic.pickle', email_dic)
 
@@ -152,17 +241,19 @@ saveData('email_dic.pickle', email_dic)
 
 # the key of the dictionary is sender's name, the value coresponds to the key is the recipient's name and sent time.
 def loadData(file_name):
-	with open('email_dic.pickle', 'rb') as handle:
-		email_dic = pickle.load(handle)
-	return  email_dic.copy()
+    with open('email_dic.pickle', 'rb') as handle:
+        email_dic = pickle.load(handle)
+    return  email_dic.copy()
 
 email_dic_c = loadData('email_dic.pickle')
-quit()
+#quit()
 #----------------------------------------------------------------------
 
 
 # In[10]:
 
+nb_senders = len(email_dic_c.keys())
+print("There are %d distinct senders" % nb_senders)
 
 all_names = []
 for sender in email_dic_c.keys():
@@ -179,18 +270,24 @@ for idx in range(len(all_names)):
     all_names[idx] = all_names[idx].replace("'",'').strip()
     all_names[idx] = standardize_name(all_names[idx])
 unique_names = list(set(all_names))
-len(unique_names)
+print("nb unique names: ", len(unique_names)) #659
+print("nb all_names: ", len(all_names))  # 6311
 
 
 # In[11]:
 
 
-print(type(unique_names))
-print(dir(unique_names))
-print(unique_names)
+#print(type(unique_names))
+#print(dir(unique_names))
+#print(unique_names)
 unique_names.remove(None)
 unique_names.sort()
 unique_names[-100:]
+
+print("remove None from unique_names")
+print("nb unique_names: ", len(unique_names))  #658
+#quit()
+
 
 
 # In[12]:
