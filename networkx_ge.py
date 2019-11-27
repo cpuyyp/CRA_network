@@ -119,6 +119,9 @@ def extract_email(string):
         string = re.sub(email, "", string) 
         string = re.sub(r"<>", "", string) 
         string = re.sub(r"\[mailto:\]", "", string) 
+        #print("removing junk: string= ", string)
+        string = re.sub(r"\(\)", "", string) 
+        #print("after removal: ", string)
         string = string.strip()
         # Takes shortest pattern unless enclosed in grouping ()
     else:
@@ -134,6 +137,7 @@ def extract_email(string):
 def standardize_name2(string): 
 # The emails have already been removed. All that is left is a single person's name
     print("standardize string: ", string)
+    string = string.strip()
     if len(string) == 0:
         return '', '', ''
 
@@ -216,16 +220,26 @@ def cleanRecipients(df):
         print("=========================================")
         print("rec= ", rec)
         recipient_string = rec[2:-2].replace("'",'')
+        #if re.search("Osteen|osteen", recipient_string):
+        if re.search("tosteen@moorebass.com", recipient_string):
+            flag = True
+            #print(recipient_string); quit()
+        else: 
+            flag = False
         r1 = recipient_string.split(';')
 
         if len(r1) > 1:
+            db = 0
             recipient_list = r1
         elif len(r1) == 1:
+           db = 1
            r2 = recipient_string.split(',') 
            if len(r2) == 1:
+              db = 2
               recipient_list = r2
               # no further splits necessary. Single name or single email. Pass to standardize_name2()
            else:  # If there are double quotes, remove commas from double quotes, 
+               db = 3
                # if the recipient list is all letters, spaces, "-", "." and commas, 
                # then we are dealing with a single user name.
                # pattern = r"[A-Za-z\._-,\s]+" 
@@ -234,32 +248,49 @@ def cleanRecipients(df):
                #print("recipient_list= ", recipient_list)
                m = re.search(pattern, recipient_string)
                if m:  # person's name
+                   db = 4
                    recipient_list = [recipient_string]
                else:
+                   db = 5
                    print("-----------------------------------------")
                    #print("recipient_string= ", recipient_string)
                    #pattern = r"(\b\w+\b),(\b\w_\b)"
                    pattern = r"\s*\w+\s*,\s*\w+\s*"
                    m = re.search(pattern, recipient_string)
                    if not m:
+                       db = 6
                        #print("m= ", m)
                        # Split via comma
                        recipient_list = recipient_string.split(',') 
                        #print("recipient_list= ", recipient_list)
                    else:
-                       recipient_list = [recipient_string]
+                       db = 7
+                       nb_commas = len(re.findall(",", recipient_string))
+                       print("nb commas= ", nb_commas)
+                       if nb_commas > 2:  # not foolproof. There might be only two emails. 
+                           recipient_list = recipient_string.split(',')
+                       else:
+                           recipient_list = [recipient_string]
+                       print("dbg=7, ", recipient_string)
+                       # Separate by commas
         print(".... recipient_list= ", recipient_list)
+        #print(".... dbg= ", db)
+        #if flag: quit()
+        #continue
         #-------------------
 
         # At this stage, recipient_list is the list of recipients
         # to be further processed by extract_mail and standardize_name2
 
         for i, person in enumerate(recipient_list):
-            print("person= ", person)
+            #print("person= ", person)
             email, new_str = extract_email(person)
+            #print("email= ", email, ",  new_str= ", new_str)
             f, m, l = standardize_name2(new_str)
             recipient_list[i] = (f,l,email)
+            #print("f,m,l= ", [f,m,l])
         recipients.append(recipient_list)
+        #if flag: quit()
     df[TO] = recipients
 
 def cleanCCs(df):
@@ -285,6 +316,7 @@ def cleanSenders(df):
     df[FROM] = senders
 
 cleanRecipients(df)
+print("gordon END")
 #cleanCCs(df)
 #cleanSenders(df)
 
