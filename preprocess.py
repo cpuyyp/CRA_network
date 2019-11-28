@@ -1,9 +1,18 @@
+# Preprocessing code. Read in Excel table created by Joey and Austin
+# to store the emails from CRA between 2012-2017. 
+# This code cleans the data further, identifying first, middle, and last names,
+# and emails, to remove duplicates. 
+# Compute the number of unique emails. Define notion of equal users. 
+# Define the number of different emails for different users. 
+# Compute whether an email was sent out during daytime hours or after hours [0/1]. 
+# Compute the length of the email, of the subject
+# Store all the data in a Pandas file, with the subject and email itself removed to keep 
+#    the file small
+# Consider replacing email names and people's names with indexes for faster execution (for later). 
 
 # coding: utf-8
 
-# JOEY
-
-# In[1]:
+# JOEY, restructured by Gordon Erlebacher, 2019-11-27
 
 
 import networkx as nx
@@ -47,7 +56,6 @@ def readDataFrame(file_name):
     #print("len(df)= ", df.columns())
     #del df['Unnamed: 0.1']
     return df
-
 
 
 def restrictEmailsToYears(df, low=2013, high=2014):
@@ -125,13 +133,13 @@ def extract_email(string):
         string = string.strip()
         # Takes shortest pattern unless enclosed in grouping ()
     else:
-        email = None
+        email = ''
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
     string = re.sub(pattern, "", string.lower())
     #print("after sub: string= ", string)
     #print("new string= ", string)
-    return email, string
+    return email.lower(), string
 
 
 def standardize_name2(string): 
@@ -268,7 +276,7 @@ def cleanDFColumn(df, col_name ):
             email, new_str = extract_email(person)
             #print("email= ", email, ",  new_str= ", new_str)
             f, m, l = standardize_name2(new_str)
-            recipient_list[i] = (f,l,email)
+            recipient_list[i] = [f,l,email]
             #print("f,m,l= ", [f,m,l])
         recipients.append(recipient_list)
         #if flag: quit()
@@ -276,20 +284,80 @@ def cleanDFColumn(df, col_name ):
     return df
 
 #----------------------------------------------------------------------
-
 def cleanSenders(df):
     senders = []
     for rec in df['From']:
         sender = rec[1:-1].replace("'",'')
         email, new_str = extract_email(sender)
+        #print("new_str= ", new_str)
         f, m, l = standardize_name2(new_str)
+        #print("   ",   (f,m,l,email))
         # strip() should not be necessary, but the line with "sheila" has an additional leading space
         # I do not know why. 
-        senders.append((f,l,email))  # ignore the middle initials
-    df[FROM] = senders
+        senders.append([f,l,email])  # ignore the middle initials
+    df["From"] = senders
+    return df
+#---------------------------------------------------------------
+def uniqueEmails(emails):
+# emails: list of triplets (first, last, emails)
+    #print(emails); quit()
+    emails = np.asarray(emails).copy() # in case
 
-cleanDFColumn(df, 'To')
-cleanDFColumn(df, 'CC')
+    unique = set()
+    for e in emails:
+        unique.add(e[2])
+    return unique
+#-------------------------------
+df = cleanDFColumn(df, 'To')
+df = cleanDFColumn(df, 'CC')
+df = cleanSenders(df)
+
+#-------------------------------
+# List of unique senders
+from_list = df['From'].values.tolist()
+# each element of 'From' is a triplet: first, last, email
+unique_senders = list(uniqueEmails(from_list))
+unique_senders.sort()
+for s in unique_senders:
+    print("sender: ", s)
+print("nb unique senders with emails: ", len(unique_senders))
+
+#-------------------------------
+# List of unique recipients
+# Create a list of email triplets
+to_list = df['To'].values.tolist()
+unique_receivers = set()
+for i in range(len(to_list)):
+    for lst in to_list[i]:
+        unique_receivers.add(lst[2])
+
+unique_receivers = list(unique_receivers)
+unique_receivers.sort()
+for s in unique_receivers:
+    print("rec: ", s)
+
+print("nb unique receivers with emails: ", len(unique_receivers))
+
+#-------------------------------
+# List of unique recipients
+# Create a list of email triplets
+cc_list = df['CC'].values.tolist()
+unique_cc = set()
+for i in range(len(cc_list)):
+    for lst in cc_list[i]:
+        unique_cc.add(lst[2])
+
+unique_cc = list(unique_cc)
+unique_cc.sort()
+for s in unique_cc:
+    print("cc: ", s)
+
+print("nb unique cc with emails: ", len(unique_cc))
+
+quit()
+
+#--------------------
+print("nb_unique_senders= ", nb_unique_senders)
 #cleanSenders(df)
 
 s = set()
@@ -319,284 +387,4 @@ print("len(set)= ", len(s))
 
 quit()
 
-
-# compute email_dict: 
-#for idx, dataslice in enumerate(df.itertuples()):
-recipients = []
-print("----------------------------------------")
-for i, row in enumerate(df.itertuples()):
-    print
-    standardized_name = []
-#   print(dataslice[4])
-    #recipient_list = dataslice[4][2:-2].replace("'",'').strip().split(';')
-    print(type(row[TO][2:-2]))
-    //print("row: ", row[TO])
-    recipient_list = row[TO][2:-2].replace("'",'').strip().split(';')
-    if i < 3:
-        print("i= ", i)
-        print(row)
-        print("recipient_list= ", recipient_list)
-        print("row[TO] = ", row[TO])
-        print("row[CC] = ", row[CC])
-    recipients.append(recipient_list)
-
-    continue
-
-    for person in recipient_list:
-#         print(person)
-        if len(recipient_list) > max_nb_recipients: break
-        standardized_name.append(standardize_name(person))
-#         print(standardize_name(person))
-
-    #cc_list = dataslice[5][2:-2].replace("'",'').strip().split(';')
-    cc_list = row[CC][2:-2].replace("'",'').strip().split(';')
-    for person in cc_list:
-        if len(cc_list) > max_nb_cc: break
-        if person != '':
-            standardized_name.append(standardize_name(person))
-
-    for name in standardized_name:
-        if standardize_name(row[FROM]) not in email_dic:
-            email_dic[standardize_name(row[FROM])] = []
-        if standardize_name(row[FROM]) != None:
-            if name != None:
-                #email_dic[standardize_name(dataslice[2])].append([name,dataslice[3]])
-                email_dic[standardize_name(row[FROM])].append([name,row[SENT]])
-
-#print(email_dic)
-#print(recipients)
-print("----------------------------------------")
-print("recipients[0:3]= ", recipients[0:3])
-print("df[TO][0:3]= ", df[TO])
-quit()
-df[TO] = recipients
-print(df.iloc[0:3,TO])
-quit()
-
-def saveData(file_name, email_dic):
-    with open('email_dic.pickle', 'wb') as handle:
-        pickle.dump(email_dic, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-saveData('email_dic.pickle', email_dic)
-
-# In[6]:
-
-
-# the key of the dictionary is sender's name, the value coresponds to the key is the recipient's name and sent time.
-def loadData(file_name):
-    with open('email_dic.pickle', 'rb') as handle:
-        email_dic = pickle.load(handle)
-    return  email_dic.copy()
-
-email_dic_c = loadData('email_dic.pickle')
-#quit()
-#----------------------------------------------------------------------
-
-
-# In[10]:
-
-nb_senders = len(email_dic_c.keys())
-print("There are %d distinct senders" % nb_senders)
-
-all_names = []
-for sender in email_dic_c.keys():
-#     print(sender)
-    if sender != None:
-        all_names.append(sender)
-    for e in email_dic_c[sender]:
-        recipient = e[0]
-        if recipient != None:
-            all_names.append(recipient)
-
-
-for idx in range(len(all_names)):
-    all_names[idx] = all_names[idx].replace("'",'').strip()
-    all_names[idx] = standardize_name(all_names[idx])
-unique_names = list(set(all_names))
-print("nb unique names: ", len(unique_names)) #659
-print("nb all_names: ", len(all_names))  # 6311
-
-
-# In[11]:
-
-
-#print(type(unique_names))
-#print(dir(unique_names))
-#print(unique_names)
-unique_names.remove(None)
-unique_names.sort()
-unique_names[-100:]
-
-print("remove None from unique_names")
-print("nb unique_names: ", len(unique_names))  #658
-#quit()
-
-
-
-# In[12]:
-
-
-# create name to index dictionary and index to name dictionary for later use
-name_id = {}
-for idx,name in enumerate(unique_names):
-    name_id[name] = idx
-id_name = {}
-for idx,name in enumerate(unique_names):
-    id_name[idx] = name
-
-
-# In[13]:
-
-
-# create a square matrix to save number of emails sent and received by each person
-sender_to_recipient = np.zeros((len(unique_names),len(unique_names)))
-for sender in email_dic_c.keys():
-    for e in email_dic_c[sender]:
-        recipient = e[0]
-        if sender in name_id and recipient in name_id:
-            sender_to_recipient[name_id[sender],name_id[recipient]] = sender_to_recipient[name_id[sender],name_id[recipient]] +1
-np.sum(sender_to_recipient)
-
-
-# In[14]:
-
-
-# plotting
-G = nx.Graph()
-edge_width = []
-node_weight_sender = np.sum(sender_to_recipient,axis = 1)
-node_weight_recipient = np.sum(sender_to_recipient,axis = 0)
-node_weight_total = node_weight_sender + node_weight_recipient 
-
-#nb_recipient = np.array(send_to_recipient.shape[0])
- 
-# node_weight is the size of node 
-# the node weight has to be in a specific order(in the order of time when the node first added to the graph), 
-# cannot just use node_weight_total
-node_weight = [] 
-for i in range(sender_to_recipient.shape[0]):
-    for j in range(i,sender_to_recipient.shape[0]):
-        # if there is more than 1 email between these 2 people, add node if haven't add. Add edge.
-        if sender_to_recipient[i,j] + sender_to_recipient[j,i] > 1:
-            if id_name[i] not in G.nodes():
-                G.add_node(id_name[i])
-                node_weight.append(node_weight_total[i])
-            if id_name[j] not in G.nodes():
-                    G.add_node(id_name[j])
-                    node_weight.append(node_weight_total[j])
-            G.add_edge(id_name[i], id_name[j],weight= 2/(sender_to_recipient[i,j] + sender_to_recipient[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
-            edge_width.append(sender_to_recipient[i,j] + sender_to_recipient[j,i])
-print('done adding edges and nodes')
-
-
-# find who should be labeled
-node_have_label = {}
-for i in range(sender_to_recipient.shape[0]):
-    if node_weight_total[i]>250 and id_name[i] in G.nodes():
-        node_have_label[id_name[i]] = id_name[i]
-
-# edge_width is actrually edge strength. Bigger strength will lead to shorter distance
-# edge_width = np.sqrt(np.array(edge_width))
-edge_width = 0.2*(np.array(edge_width))
-print('done adding labels')
-
-plt.figure(figsize=(40,40))
-# calculating node positions
-pos = nx.spring_layout(G,iterations=30)
-print('done calculating position')
-
-nx.draw_networkx_nodes(G, pos, node_size= node_weight,node_color = 'black')
-nx.draw_networkx_edges(G, pos, width= edge_width, edge_color = 'grey')
-nx.draw_networkx_labels(G, pos, labels= node_have_label, font_size=24, font_color = 'red', font_family='sans-serif')
-
-plt.axis('off')
-#plt.show()
-plt.savefig("gordon.pdf")
-
-
-# In[15]:
-
-
-# test
-edge_width.max()
-
-
-# In[16]:
-
-
-# test
-G = nx.Graph()
-
-G.add_edge('d','a',weight = 0.1)
-G.add_edge('d','b',weight = 100)
-G.add_edge('c','a',weight = 0.1)
-
-pos = nx.spring_layout(G)
-
-nx.draw_networkx_nodes(G, pos,node_color = 'black')
-nx.draw_networkx_edges(G, pos, width=1, edge_color = 'grey')
-nx.draw_networkx_labels(G, pos, labels={'a':'a','d':'d'}, font_size=30, font_color='blue',font_family='sans-serif')
-
-
-
-# # old codes
-
-# In[ ]:
-
-
-# # for i in range(5):
-# i = 1
-# df_for_plot2 = df_for_plot[df_for_plot['Sent']<datetime(2013+i, 1, 1, 0, 0, 0)]
-# df_for_plot3 = df_for_plot2[df_for_plot2['Sent']>datetime(2012+i, 1, 1, 0, 0, 0)]
-
-# G = nx.from_pandas_edgelist(df_for_plot3, 'From','To')
-# count = df_for_plot3['From'].append(df_for_plot3['To']).value_counts()
-# nodesizes = np.zeros(len(list(G.nodes)))
-# for i in range(len(list(G.nodes))):
-#     if list(G.nodes)[i] == None:
-#         nodesizes[i] = 0
-#     else:
-#         nodesizes[i] = count[count.index == list(G.nodes)[i]][0]
-# index = nodesizes.argsort()[-10:][::-1]
-# Top10 = [list(G.nodes)[i] for i in index]
-# Top10_val = [nodesizes[i] for i in index]
-# print(list(zip(Top10, Top10_val)))
-
-# plt.figure(figsize = (40,30))
-# pos = nx.spring_layout(G, k = 0.1, iterations = 30)
-# nx.draw_networkx(G, pos, node_size = nodesizes, node_color = 'black', with_labels = True, edge_color='grey')
-# plt.axis('off')
-# plt.show()
-
-
-# In[ ]:
-
-
-# l1 = list(G.nodes())
-# l2 = big_names
-# l3 = [x for x in l1 if x not in l2]
-# G.remove_nodes_from(l3)
-
-
-# In[ ]:
-
-
-# count = df_for_plot3['From'].append(df_for_plot3['To']).value_counts()
-# nodesizes = np.zeros(len(list(G.nodes)))
-# for i in range(len(list(G.nodes))):
-#     if list(G.nodes)[i] == None:
-#         nodesizes[i] = 0
-#     else:
-#         nodesizes[i] = count[count.index == list(G.nodes)[i]][0]
-# index = nodesizes.argsort()[-10:][::-1]
-# Top10 = [list(G.nodes)[i] for i in index]
-# Top10_val = [nodesizes[i] for i in index]
-# print(list(zip(Top10, Top10_val)))
-
-# plt.figure(figsize = (40,30))
-# pos = nx.spring_layout(G, k = 0.1, iterations = 10)
-# nx.draw_networkx(G, pos, node_size = nodesizes, node_color = 'black', with_labels = True, edge_color='grey')
-# plt.axis('off')
-# plt.savefig('nx_200.png')
-# plt.show()
 
