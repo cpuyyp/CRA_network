@@ -102,12 +102,13 @@ name_tests = ['Administration-Thomas Harrison <Abc.abc@gmail.com>',
 # been sent, we will ignore this issue. 
 # WHY the ".*?" at the beginning of the string. That makes the match start at the start of the strong
 #re_email = re.compile(r'.*?([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
-re_email = re.compile(r'([a-zA-Z_.]*\.?\w+@[0-9a-zA-Z._-]*)')
+re_email = re.compile(r'([0-9a-zA-Z_\.]*\.?\w+@[0-9a-zA-Z._-]*)')
 #orig re_email = re.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})')
 
-def extract_email(string):
+def extractEmail(string):
+    #print("extract string: ", string)
     # Only keep first email found, and remove it from the string
-    print("orig string= ", string)
+    #print("orig string= ", string)
     s = re_email.search(string)
     #print("search: ", s)
     #print("dir(s): ", dir(s))
@@ -139,6 +140,7 @@ def extract_email(string):
     string = re.sub(pattern, "", string.lower())
     #print("after sub: string= ", string)
     #print("new string= ", string)
+    #print("return email: ", email.lower())
     return email.lower(), string
 
 
@@ -269,15 +271,15 @@ def cleanDFColumn(df, col_name ):
         #-------------------
 
         # At this stage, recipient_list is the list of recipients
-        # to be further processed by extract_mail and standardize_name2
+        # to be further processed by extractEmail and standardize_name2
 
         for i, person in enumerate(recipient_list):
             #print("person= ", person)
-            email, new_str = extract_email(person)
-            #print("email= ", email, ",  new_str= ", new_str)
+            email, new_str = extractEmail(person)
+            print("triplets: email= ", email, ",  new_str= ", new_str)
             f, m, l = standardize_name2(new_str)
             recipient_list[i] = [f,l,email]
-            #print("f,m,l= ", [f,m,l])
+            print("triplets: f,l", [f,l])
         recipients.append(recipient_list)
         #if flag: quit()
     df[col_name] = recipients
@@ -288,10 +290,11 @@ def cleanSenders(df):
     senders = []
     for rec in df['From']:
         sender = rec[1:-1].replace("'",'')
-        email, new_str = extract_email(sender)
+        email, new_str = extractEmail(sender)
+        print("email from sender: ", email)
         #print("new_str= ", new_str)
         f, m, l = standardize_name2(new_str)
-        #print("   ",   (f,m,l,email))
+        print("sender   ",   (f,l))
         # strip() should not be necessary, but the line with "sheila" has an additional leading space
         # I do not know why. 
         senders.append([f,l,email])  # ignore the middle initials
@@ -310,6 +313,14 @@ def uniqueEmails(emails):
 df = cleanDFColumn(df, 'To')
 df = cleanDFColumn(df, 'CC')
 df = cleanSenders(df)
+"""
+for row in df['To'].values:
+    print("to: ", row)
+for row in df['CC'].values:
+    print("cc: ", row)
+for row in df['From'].values:
+    print("from: ", row)
+"""
 
 #-------------------------------
 # List of unique senders
@@ -350,14 +361,17 @@ unique_cc = list(unique_cc)
 unique_cc.sort()
 for s in unique_cc:
     print("cc: ", s)
+
+print("nb unique cc with emails: ", len(unique_cc))
 #------------------
+
 def makeListTriplets(df, col):
 # Make a list of triplets from a database column
 # Create a list of email triplets
     triplets = []
     df_list = df[col].values.tolist()
-    if col == 'Send':
-        for row in range(len(df_list)):
+    if col == 'From':
+        for row in df_list:
             triplets.append(row)
     else:
         for row in range(len(df_list)):
@@ -366,19 +380,42 @@ def makeListTriplets(df, col):
     return triplets
 
 cc_triplets = makeListTriplets(df, "CC")
+for t in cc_triplets:
+	print("cc_triplets= ", t)
 to_triplets = makeListTriplets(df, "To")
-send_triplets = makeListTriplets(df, "From")
+from_triplets = makeListTriplets(df, "From")
 #print("triplets")
 #print(triplets)
 print("nb to_triplets: ", len(to_triplets))
 print("nb cc_triplets: ", len(cc_triplets))
-print("nb send_triplets: ", len(send_triplets))
+print("nb from_triplets: ", len(from_triplets))
+full_list = []
+
+#full_list.extend(cc_triplets)
+full_list.extend(from_triplets)
+#full_list.extend(to_triplets)
+print("nb in full triplet list: ", len(full_list))
+
+# Compute nb of unique elements in full_list based on emails first, 
+# then based on first, last, email
+full_set = set()
+for i in full_list:
+     full_set.add(tuple(i))  # tuples are hashable, lists are not
+print("nb unique triplets: ", len(full_set))
+
+def sortTriplets(triplets):
+    triplets.sort()
+    return(triplets)
+
+triplets = sortTriplets(list(full_set))
+for row in triplets:
+    print(row)
 quit()
 
 
 #------------------
 
-print("nb unique cc with emails: ", len(unique_cc))
+
 
 quit()
 
