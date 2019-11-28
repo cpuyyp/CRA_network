@@ -300,7 +300,6 @@ def cleanSenders(df):
 #---------------------------------------------------------------
 def uniqueEmails(emails):
 # emails: list of triplets (first, last, emails)
-    #print(emails); quit()
     emails = np.asarray(emails).copy() # in case
 
     unique = set()
@@ -351,6 +350,33 @@ unique_cc = list(unique_cc)
 unique_cc.sort()
 for s in unique_cc:
     print("cc: ", s)
+#------------------
+def makeListTriplets(df, col):
+# Make a list of triplets from a database column
+# Create a list of email triplets
+    triplets = []
+    df_list = df[col].values.tolist()
+    if col == 'Send':
+        for row in range(len(df_list)):
+            triplets.append(row)
+    else:
+        for row in range(len(df_list)):
+            for lst in df_list[row]:
+                triplets.append(lst)
+    return triplets
+
+cc_triplets = makeListTriplets(df, "CC")
+to_triplets = makeListTriplets(df, "To")
+send_triplets = makeListTriplets(df, "From")
+#print("triplets")
+#print(triplets)
+print("nb to_triplets: ", len(to_triplets))
+print("nb cc_triplets: ", len(cc_triplets))
+print("nb send_triplets: ", len(send_triplets))
+quit()
+
+
+#------------------
 
 print("nb unique cc with emails: ", len(unique_cc))
 
