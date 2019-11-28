@@ -118,22 +118,28 @@ def extractEmail(string):
     ##print("m.groups= ", m.groups())
     #print("dir(m): ", dir(m))
     if s:
+        print("if s")
         #print("search.group(0): ", s.group(0))
         #print("match.group(0): ", m.group(0))
         #print("findall: ", re_email.findall(string))
         email = re_email.findall(string)[0]
-        #print("email= ", email)
+        email = re.sub(r"xa0|\\", " ", email)
+        print("email= ", email)
         #print("start, end: ", s.start(), s.end())
         string = string[:s.start()] + string[s.end():]
         string = re.sub(email, "", string) 
         string = re.sub(r"<>", "", string) 
         string = re.sub(r"\[mailto:\]", "", string) 
+        print("xa0 extract mail: ", string)
+        string = re.sub(r"xa0|\\", " ", string)
+        print("xa0 extract mail: ", string)
         #print("removing junk: string= ", string)
         string = re.sub(r"\(\)", "", string) 
         #print("after removal: ", string)
         string = string.strip()
         # Takes shortest pattern unless enclosed in grouping ()
     else:
+        print("else s")
         email = ''
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
@@ -144,7 +150,7 @@ def extractEmail(string):
     return email.lower(), string
 
 
-def standardize_name2(string): 
+def standardizeName(string): 
 # The emails have already been removed. All that is left is a single person's name
     print("standardize string: ", string)
     string = string.strip()
@@ -152,7 +158,10 @@ def standardize_name2(string):
         return '', '', ''
 
     # remove commas and dots
-    string = re.sub(r"[\.\"]", "", string)
+    string = re.sub(r"[<>\(\)\.\"]", "", string)
+    # remove non alpha-numeric characters (leave space since it acts as a separator)
+    string = re.sub(r"xa0|\\", " ", string)
+    #print("standardize, string sub= ", string)
 
     strings = string.split(',')
     first = last = middle = ''
@@ -185,12 +194,26 @@ def standardize_name2(string):
         print("length(strings)>2, should not happen: ", strings)
         #quit()
 
-    return first.strip(), middle.strip(), last.strip()
+    # The csv file sometimes has names in the form "last first middle" instead of "last, first middle"
+    # In this case, I must reorder the names. Check the length of middle.strip(). If it is 1, then swap
+
+    first  = first.strip()
+    middle = middle.strip()
+    last  = last.strip()
+
+    #print("len(last) = ", len(last))  # 504 across all years. 
+    #print("first= ", first, ", middle= ", middle, ", last= ", last)
+    if len(last) == 1:
+        #print("return %s, %s, %s" % (middle, last, first))
+        return middle, last, first
+    else:
+        #print("return %s, %s, %s" % (first, middle, last))
+        return first, middle, last
 
 
 
 df = readDataFrame("output4.csv")
-df = restrictEmailsToYears(df, low=2013, high=2014)
+df = restrictEmailsToYears(df, low=2012, high=2018)
 # In[5]:
 
 # convert pandas df to dictionary, only keep sender/recipient names and sent time
@@ -240,7 +263,7 @@ def cleanDFColumn(df, col_name ):
            r2 = recipient_string.split(',') 
            if len(r2) == 1:
               recipient_list = r2
-              # no further splits necessary. Single name or single email. Pass to standardize_name2()
+              # no further splits necessary. Single name or single email. Pass to standardizeName()
            else:  # If there are double quotes, remove commas from double quotes, 
                # if the recipient list is all letters, spaces, "-", "." and commas, 
                # then we are dealing with a single user name.
@@ -271,13 +294,12 @@ def cleanDFColumn(df, col_name ):
         #-------------------
 
         # At this stage, recipient_list is the list of recipients
-        # to be further processed by extractEmail and standardize_name2
+        # to be further processed by extractEmail and standardizeName
 
         for i, person in enumerate(recipient_list):
-            #print("person= ", person)
             email, new_str = extractEmail(person)
             print("triplets: email= ", email, ",  new_str= ", new_str)
-            f, m, l = standardize_name2(new_str)
+            f, m, l = standardizeName(new_str)
             recipient_list[i] = [f,l,email]
             print("triplets: f,l", [f,l])
         recipients.append(recipient_list)
@@ -293,7 +315,7 @@ def cleanSenders(df):
         email, new_str = extractEmail(sender)
         print("email from sender: ", email)
         #print("new_str= ", new_str)
-        f, m, l = standardize_name2(new_str)
+        f, m, l = standardizeName(new_str)
         print("sender   ",   (f,l))
         # strip() should not be necessary, but the line with "sheila" has an additional leading space
         # I do not know why. 
@@ -381,7 +403,7 @@ def makeListTriplets(df, col):
 
 cc_triplets = makeListTriplets(df, "CC")
 for t in cc_triplets:
-	print("cc_triplets= ", t)
+    print("cc_triplets= ", t)
 to_triplets = makeListTriplets(df, "To")
 from_triplets = makeListTriplets(df, "From")
 #print("triplets")
@@ -391,9 +413,9 @@ print("nb cc_triplets: ", len(cc_triplets))
 print("nb from_triplets: ", len(from_triplets))
 full_list = []
 
-#full_list.extend(cc_triplets)
+full_list.extend(cc_triplets)
 full_list.extend(from_triplets)
-#full_list.extend(to_triplets)
+full_list.extend(to_triplets)
 print("nb in full triplet list: ", len(full_list))
 
 # Compute nb of unique elements in full_list based on emails first, 
