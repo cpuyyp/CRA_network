@@ -41,8 +41,18 @@ quit()
 
 # In[2]:
 
-def readDataFrame(file_name):
-    df = pd.read_csv(file_name, index_col=False)
+def readDataFrame(file_name, read_cached=True):
+    df1 = pd.read_csv(file_name, index_col=False)
+
+    if not read_cached:  # only set to 1 in order to generate the file output_reduced.csv
+        print(df1.columns)
+        df = df1.drop(columns=["Subject", "Attachments", "Body"])
+        df.to_csv("output_reduced.csv", index_label="Index", index=True)
+        cols = df.columns
+        df = df.drop(columns=[cols[0], cols[1]]) 
+        print(df.head()); quit()
+
+    df = df1
     #print(df.head())
     #print(df.columns)
     cols = df.columns
@@ -109,38 +119,49 @@ def extractEmail(string):
     #print("extract string: ", string)
     # Only keep first email found, and remove it from the string
     #print("orig string= ", string)
+    print("extract email, string: ", string)
     s = re_email.search(string)
-    #print("search: ", s)
-    #print("dir(s): ", dir(s))
-    #m = re_email.match(string)
-    #    m = re.match(re_email, string)
-    #print("match: ", m)
-    ##print("m.groups= ", m.groups())
-    #print("dir(m): ", dir(m))
-    if s:
+
+    if s:  # found email string
         print("if s")
-        #print("search.group(0): ", s.group(0))
-        #print("match.group(0): ", m.group(0))
-        #print("findall: ", re_email.findall(string))
         email = re_email.findall(string)[0]
         email = re.sub(r"xa0|\\", " ", email)
-        print("email= ", email)
-        #print("start, end: ", s.start(), s.end())
+        
+        # Email is removed from string
         string = string[:s.start()] + string[s.end():]
+        # Remove Abbreviations with two or more letters with a dot
+        # \s is whitespace
+        string = re.sub(r",(\s*[A-Z][\.]?){2,}", " ", string)
         string = re.sub(email, "", string) 
         string = re.sub(r"<>", "", string) 
         string = re.sub(r"\[mailto:\]", "", string) 
-        print("xa0 extract mail: ", string)
         string = re.sub(r"xa0|\\", " ", string)
-        print("xa0 extract mail: ", string)
-        #print("removing junk: string= ", string)
         string = re.sub(r"\(\)", "", string) 
-        #print("after removal: ", string)
         string = string.strip()
-        # Takes shortest pattern unless enclosed in grouping ()
+        #print("before extract, if: string: ", string)
+        string = re.sub(r"[\[<\(]mailto.*?[\]>\)]", " ", string)
+        #print("after extract, if: string: ", string)
     else:
         print("else s")
+        #  " P.E.   J. Keith Dantin" ==> Keith J. Dantin
+        #  Notice the double enclosure. \1 accesses the outer enclosure (( ))
+        print("Before, string: ", string)
+        string = re.sub(r"(([A-Z][\.]?){2,})\s+([A-Z][\.]?)\s+(\w+)\s+(\w+)", 
+                        r"\4 \3 \5", string)
+        print("Filter 1, string: ", string)
+        print("removal of abbreviations, string= ", string)
+        # PC Wu Asst:  Elaine Mager"" <emager@ci.pensacola.fl.us>,
+        # transform to:   Elaine Mager"" <emager@ci.pensacola.fl.us>
+        #  ",  P.E.J." ==>  " "
+        string = re.sub(r",(\s*[A-Z][\.]?){2,}", " ", string)
+        print("Filter 2, string: ", string)
+        # Danger: Acceptable is 
+        #      first last, abbrev
+        #      first middle last, abbrev
+        #   Not acceptable
+        #      last, first P.E.   (note that there is no comma before the abbreviation in this case)
         email = ''
+        print("after extract, else: string: ", string)
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
     string = re.sub(pattern, "", string.lower())
@@ -212,7 +233,9 @@ def standardizeName(string):
 
 
 
-df = readDataFrame("output4.csv")
+#df = readDataFrame("output4.csv", read_cached=False)
+df = readDataFrame("output_reduced.csv", read_cached=True)
+
 df = restrictEmailsToYears(df, low=2012, high=2018)
 # In[5]:
 
@@ -249,18 +272,43 @@ sender = df['From']
 #----------------------------------------------------------------------
 def cleanDFColumn(df, col_name ):
     recipients = []
-    for rec in df[col_name]:
+    df.reset_index()  # indices now go from 0, upward
+    for irec, rec in enumerate(df[col_name]):
+        # string = "gsd BCC: af ;lkjaf] af j]". Must be done before the string is broken up. 
+        # Note te use of *?  (non-greedy search). Without it, the search would go to the last bracket
+        rec= re.sub(r"(BCC:.*?])", r"]", rec)
+
         recipient_string = rec[2:-2].replace("'",'')
+
         if re.search("tosteen@moorebass.com", recipient_string):
             flag = True
         else: 
             flag = False
+
+        # remove strings that have too many words
+        if (len(recipient_string.split(' ')) > 1000):
+            recipient_string = ''
+
         r1 = recipient_string.split(';')
+        if (len(r1) > 50): 
+            #print("number of ; splits: ", len(r1))
+            # Do not consider recipient lists greater than 10
+            # It is unlikely they are significant
+            # Replace recipient list by an empty list
+            #df.loc[irec, col_name] = '[""]'
+            recipient_string = ''
+            r1 = ['']
+            
 
         if len(r1) > 1:
             recipient_list = r1
         elif len(r1) == 1:
            r2 = recipient_string.split(',') 
+           # remove strings that have too many fields
+           if (len(recipient_string.split(',')) > 50):
+               recipient_string = ''
+           #if (len(r2) > 10): 
+                 #print("number of , splits: ", len(r1))
            if len(r2) == 1:
               recipient_list = r2
               # no further splits necessary. Single name or single email. Pass to standardizeName()
@@ -304,6 +352,8 @@ def cleanDFColumn(df, col_name ):
             print("triplets: f,l", [f,l])
         recipients.append(recipient_list)
         #if flag: quit()
+    print("len(col_name): ", len(df[col_name]))
+    print("len(recipients): ", len(recipients))
     df[col_name] = recipients
     return df
 
