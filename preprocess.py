@@ -138,7 +138,7 @@ def extractEmail(string):
         string = re.sub(r"xa0|\\", " ", string)
         string = re.sub(r"\(\)", "", string) 
         print("before Filter 1, string: ", string)
-        string = re.sub(r"\bMD\b", " ", string)  # MD: Medical Doctor
+        string = re.sub(r"\b(MD|Major)\b", " ", string)  # MD: Medical Doctor
         print("Filter 1, string: ", string)
         string = string.strip()
         #print("before extract, if: string: ", string)
@@ -167,7 +167,7 @@ def extractEmail(string):
         print("after extract, else: string: ", string)
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
-    string = re.sub(pattern, "", string.lower())
+    string = re.sub(pattern, "", string)
     #print("after sub: string= ", string)
     #print("new string= ", string)
     #print("return email: ", email.lower())
@@ -177,6 +177,8 @@ def extractEmail(string):
 def standardizeName(string): 
 # The emails have already been removed. All that is left is a single person's name
     print("standardize string: ", string)
+    # transform MikeWood to Mike Wood, for example. 
+    string = re.sub(r"\b([A-Z][a-z]+)([A-Z][a-z]+)\b", r"\1 \2", string)
     string = string.strip()
     if len(string) == 0:
         return '', '', ''
@@ -221,9 +223,9 @@ def standardizeName(string):
     # The csv file sometimes has names in the form "last first middle" instead of "last, first middle"
     # In this case, I must reorder the names. Check the length of middle.strip(). If it is 1, then swap
 
-    first  = first.strip()
-    middle = middle.strip()
-    last  = last.strip()
+    first  = first.strip().lower()
+    middle = middle.strip().lower()
+    last  = last.strip().lower()
 
     #print("len(last) = ", len(last))  # 504 across all years. 
     #print("first= ", first, ", middle= ", middle, ", last= ", last)
@@ -501,6 +503,8 @@ for t in triplets:
 triplets = sortTriplets(list(d_triplets))
 print("----------------------------")
 print("New triplets")
+for t in new_triplets:
+    print(t)
 for t in triplets:
     #print((t[0], t[1], d_triplets[(t[0], t[1])]))
     n = [t[0], t[1], d_triplets[(t[0], t[1])]]
