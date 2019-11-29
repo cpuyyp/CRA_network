@@ -137,6 +137,9 @@ def extractEmail(string):
         string = re.sub(r"\[mailto:\]", "", string) 
         string = re.sub(r"xa0|\\", " ", string)
         string = re.sub(r"\(\)", "", string) 
+        print("before Filter 1, string: ", string)
+        string = re.sub(r"\bMD\b", " ", string)  # MD: Medical Doctor
+        print("Filter 1, string: ", string)
         string = string.strip()
         #print("before extract, if: string: ", string)
         string = re.sub(r"[\[<\(]mailto.*?[\]>\)]", " ", string)
@@ -148,8 +151,8 @@ def extractEmail(string):
         print("Before, string: ", string)
         string = re.sub(r"(([A-Z][\.]?){2,})\s+([A-Z][\.]?)\s+(\w+)\s+(\w+)", 
                         r"\4 \3 \5", string)
-        print("Filter 1, string: ", string)
-        print("removal of abbreviations, string= ", string)
+        print("Filter 0, string: ", string)
+        #print("removal of abbreviations, string= ", string)
         # PC Wu Asst:  Elaine Mager"" <emager@ci.pensacola.fl.us>,
         # transform to:   Elaine Mager"" <emager@ci.pensacola.fl.us>
         #  ",  P.E.J." ==>  " "
@@ -486,13 +489,16 @@ for row in triplets:
 # Consolidate triplets. Fill in missing emails. 
 
 d_triplets = {}
+new_triplets = []
 for t in triplets:
-    d_triplets[(t[0],t[1])] = ''
-    if t[2] != '': 
-        d_triplets[(t[0],t[1])] = t[2]
+    if t[0] == '' and t[1] == '': 
+        new_triplets.append(t)
+    else:
+        d_triplets[(t[0],t[1])] = ''
+        if t[2] != '': 
+            d_triplets[(t[0],t[1])] = t[2]
 
 triplets = sortTriplets(list(d_triplets))
-new_triplets = []
 print("----------------------------")
 print("New triplets")
 for t in triplets:
