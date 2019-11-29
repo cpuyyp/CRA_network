@@ -128,10 +128,10 @@ def extract_email(string):
         email = None
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
-    string = re.sub(pattern, "", string.lower())
+    string = re.sub(pattern, "", string
     #print("after sub: string= ", string)
     #print("new string= ", string)
-    return email, string
+    return email.lower(), string
 
 
 def standardize_name2(string): 

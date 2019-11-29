@@ -482,44 +482,31 @@ def sortTriplets(triplets):
 triplets = sortTriplets(list(full_set))
 for row in triplets:
     print(row)
+
+# Consolidate triplets. Fill in missing emails. 
+
+d_triplets = {}
+for t in triplets:
+    d_triplets[(t[0],t[1])] = ''
+    if t[2] != '': 
+        d_triplets[(t[0],t[1])] = t[2]
+
+triplets = sortTriplets(list(d_triplets))
+new_triplets = []
+print("----------------------------")
+print("New triplets")
+for t in triplets:
+    #print((t[0], t[1], d_triplets[(t[0], t[1])]))
+    n = [t[0], t[1], d_triplets[(t[0], t[1])]]
+    if not n[2]:
+        n[2] = "_".join(n[:-1])
+    new_triplets.append(tuple(n))
+    print(new_triplets[-1])
+
+#print("+++")
+#print("new_triplets: ", new_triplets)
 quit()
 
 
 #------------------
-
-
-
-quit()
-
-#--------------------
-print("nb_unique_senders= ", nb_unique_senders)
-#cleanSenders(df)
-
-s = set()
-print(df.columns)
-to_list = df['To'].values
-#------------------
-print("==================================")
-print("== Column 'To' =====================")
-for i, lst in enumerate(to_list):
-   #rec = df[TO].iloc[i].values
-   print("--- i= ", i, " ------")
-   for r in lst:
-       print("to:    ", r)
-   #print(df[TO].iloc[i])
-   #s.add(df[TO].iloc[i])
-#------------------
-print("==================================")
-print("== Column 'CC' =====================")
-for i, lst in enumerate(to_list):
-   print("--- i= ", i, " ------")
-   for r in lst:
-       print("cc:    ", r)
-quit()
-
-#print("len(df[FROM])= ", len(df[TO].values))
-print("len(set)= ", len(s))
-
-quit()
-
 
