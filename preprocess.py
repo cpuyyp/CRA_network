@@ -528,19 +528,77 @@ triplets = sortTriplets(list(full_set))
 for row in triplets:
     print(row)
 
+#----------------------------------------------------------------------
 # Consolidate triplets. Fill in missing emails. 
-
 d_triplets = {}
-new_triplets = []
-for t in triplets:
+d_missing = {}
+for i, t in enumerate(triplets):
     if t[0] == '' and t[1] == '': 
-        new_triplets.append(t)
+        arg = ("f_%d"%i, "l_%d"%i)
+        d_triplets[arg] = (arg[0], arg[1], t[2])
+        d_missing[t[2]] = (arg[0], arg[1], t[2])
     else:
-        d_triplets[(t[0],t[1])] = ''
+        d_triplets[(t[0],t[1])] = (t[0], t[1], '')
         if t[2] != '': 
-            d_triplets[(t[0],t[1])] = t[2]
+            d_triplets[(t[0],t[1])] = t
 
-triplets = sortTriplets(list(d_triplets))
+d_triplets_sorted_keys = sortTriplets(list(d_triplets))
+for k in d_triplets_sorted_keys:
+    print("triplets= ", d_triplets[k])
+#print("d_triplets")
+#print(d_triplets)
+#----------------------------------------------------------------------
+# Create a new dictionary keyed on the email, only if first and last name are nonzero.
+email_dict = {}
+for k,v in d_triplets.items(): 
+    #print("key: ", k, ", value= ", d_triplets[k])
+    if v[0][0:2] != "f_" and v[0][0:2] != "l_":
+        email_dict[v[2]] = v 
+
+for i, (k,v) in enumerate(d_triplets.items()):
+    print("%d, d_triplets, k,v= "%i, v)
+
+for i, (k,v) in enumerate(email_dict.items()):
+    print("%d, email_dict, k,v= "%i, v)
+
+print("len(email_dict): ", len(email_dict))
+print("len(d_triplets): ", len(d_triplets))
+# number of unique emails in d_triplets
+s = set()
+for k,v in d_triplets.items():
+   s.add(v[2])
+print("nb unique emails: ", len(s))
+#----------------------------------------------------------------------
+# Store the elements of d_triplets that do not have first and last
+# names in its own dictionary d_missing. Check email in d_missing  against email_dict. If the mail is found, remove the email from d_missing. 
+# d_missing["email"] = triplet
+# the items from d_missing that remain are unique. 
+
+print("nb mails in d_missing: ", len(d_missing))
+keys_to_remove = []
+
+for k,v in d_missing.items():
+    try:
+        triplet = email_dict[k]
+        keys_to_remove.append(k)
+    except:
+        # email not found in email_dict, so keep
+        pass
+
+for k in keys_to_remove:
+    del d_missing[k]
+
+print("nb mails left in d_missing after filtering: ", len(d_missing))
+# This procedure identified about 400 emails
+
+for k,v in d_missing.items():
+	print("d_missing: ", v)
+#quit()
+#----------------------------------------------------------------------
+
+# At this stage, there are fields with names and no emails. 
+# Fill in the missing emails
+new_triplets = []
 print("----------------------------")
 print("New triplets")
 for t in new_triplets:
@@ -552,11 +610,36 @@ for t in triplets:
         n[2] = "_".join(n[:-1])
     new_triplets.append(tuple(n))
     print(new_triplets[-1])
+#----------------------------------------------------------------------
 
-#print("+++")
-#print("new_triplets: ", new_triplets)
+for t in cc_triplets():
+   print("cc: ", t)
 quit()
 
 
-#------------------
+#print("+++")
+#print("new_triplets: ", new_triplets)
 
+
+#------------------
+# I know have a clean list of triplets
+# 
+#  cc_triplets
+#  from_triplets
+#  to_triplets
+# 
+# I need to replace the contents of the (cc,from,to) dataframe columns
+# by the cleaned triplets. 
+#
+# Given a triplet (t0,t1,t2) in the database, replace it by 
+#   (t0,t1,d_triplets[(t[0], t[1])])
+#
+
+print(df['From'].head())
+#a  = df['From'].apply(lambda x: (x[0],x[1],d_triplets[(x[0],x[1])]))
+
+for t in df['From'].values:
+    print(email_dict[(t[2])])
+
+
+print(a)
