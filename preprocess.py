@@ -50,7 +50,7 @@ def readDataFrame(file_name, read_cached=True):
         df.to_csv("output_reduced.csv", index_label="Index", index=True)
         cols = df.columns
         df = df.drop(columns=[cols[0], cols[1]]) 
-        print(df.head()); quit()
+        #print(df.head()); quit()
 
     df = df1
     #print(df.head())
@@ -120,10 +120,6 @@ def extractEmail(string):
     # Only keep first email found, and remove it from the string
     #print("orig string= ", string)
     print("extract email, string: ", string)
-    # Remove "jr", "sr" (and variations) from string
-    string = re.sub(r"([jJ|sS])[rR]\.?", " ", string)
-    # Remove PhD and variations
-    string = re.sub(r"[pP]\.?[hH]\.?\s*[dD]\.?", " ", string)
 
     s = re_email.search(string)
 
@@ -173,6 +169,10 @@ def extractEmail(string):
     #print("before sub: string= ", string)
     pattern = r"on behalf.*$"
     string = re.sub(pattern, "", string)
+    # Remove "jr", "sr" (and variations) from string
+    string = re.sub(r"([jJ|sS])[rR]\.?", " ", string)
+    # Remove PhD and variations
+    string = re.sub(r"[pP]\.?[hH]\.?\s*[dD]\.?", " ", string)
     #print("after sub: string= ", string)
     #print("new string= ", string)
     #print("return email: ", email.lower())
@@ -529,6 +529,43 @@ for row in triplets:
     print(row)
 
 #----------------------------------------------------------------------
+# triplets: concatenation of From, To, CC, and removal of triplet duplicates. 
+#    Some elements are missing first and last names, and other elements are missing 
+#    email. 
+# 
+# Create some dictionaries to help process the data
+#  d_missing: list of elements from triplets() with missing first and last names. 
+#      The empty first and last name fields are filled with placeholders in the 
+#      form of f_x, l_x where x is an integer: 0, 1, 2, ...
+#
+#  d_triplets: all elements of triplets with missing first and last names replaced by 
+#  (f_x, l_x). Some elements of d_triplets do not have a first name. Some elements 
+#  do not have an email. 
+#
+#  d_email: construct from d_triplets, only using elements with first and last names
+#    are NOT set to (f_x, l_x).  All emails are real. 
+#
+#  d_missing_items: dictionary constructed from elements in triplets list whose first and 
+#     last names are (f_x,l_x). They have emails. Then remove the elements that are 
+#     already present in d_email. Therefore, d_email+d_missing_items contain
+#     all the elements. All emails are real. 
+#
+#  new_triplets: constructed 
+#
+#  d_names: complete dictionary by names --> triplet from d_new_triplets
+#  d_email: complete dictionary by email --> triplet from d_new_triplets
+#
+#  Take a triplet from the database, and update it to reflect th reduction in the various fields through uniqueness considerations. 
+#   1) check triplet email. 
+#     a) there is an email  ==> use d_email[email]
+#     b) there is no email, but there is a name ==> use d_name[name]
+#     c) Print out field if a) or b) do not work
+# I am not concerned with efficiency. This is a one-time operation. 
+#
+# Once this is done, process columns from database. 
+#
+
+#----------------------------------------------------------------------
 # Consolidate triplets. Fill in missing emails. 
 d_triplets = {}
 d_missing = {}
@@ -549,19 +586,20 @@ for k in d_triplets_sorted_keys:
 #print(d_triplets)
 #----------------------------------------------------------------------
 # Create a new dictionary keyed on the email, only if first and last name are nonzero.
-email_dict = {}
+d_email = {}
 for k,v in d_triplets.items(): 
     #print("key: ", k, ", value= ", d_triplets[k])
     if v[0][0:2] != "f_" and v[0][0:2] != "l_":
-        email_dict[v[2]] = v 
+        d_email[v[2]] = v 
+
 
 for i, (k,v) in enumerate(d_triplets.items()):
     print("%d, d_triplets, k,v= "%i, v)
 
-for i, (k,v) in enumerate(email_dict.items()):
-    print("%d, email_dict, k,v= "%i, v)
+for i, (k,v) in enumerate(d_email.items()):
+    print("%d, d_email, k,v= "%i, v)
 
-print("len(email_dict): ", len(email_dict))
+print("len(d_email): ", len(d_email))
 print("len(d_triplets): ", len(d_triplets))
 # number of unique emails in d_triplets
 s = set()
@@ -570,7 +608,7 @@ for k,v in d_triplets.items():
 print("nb unique emails: ", len(s))
 #----------------------------------------------------------------------
 # Store the elements of d_triplets that do not have first and last
-# names in its own dictionary d_missing. Check email in d_missing  against email_dict. If the mail is found, remove the email from d_missing. 
+# names in its own dictionary d_missing. Check email in d_missing  against d_email. If the mail is found, remove the email from d_missing. 
 # d_missing["email"] = triplet
 # the items from d_missing that remain are unique. 
 
@@ -579,10 +617,10 @@ keys_to_remove = []
 
 for k,v in d_missing.items():
     try:
-        triplet = email_dict[k]
+        triplet = d_email[k]
         keys_to_remove.append(k)
     except:
-        # email not found in email_dict, so keep
+        # email not found in d_email, so keep
         pass
 
 for k in keys_to_remove:
@@ -592,24 +630,101 @@ print("nb mails left in d_missing after filtering: ", len(d_missing))
 # This procedure identified about 400 emails
 
 for k,v in d_missing.items():
-	print("d_missing: ", v)
-#quit()
+    print("d_missing: ", v)
+
+# all fields are filled. Use l_x, f_x if there were empties. 
+for k,v in d_triplets.items():
+    print("d_triplets: ", v)
+#---------------------------------------------------------------------
+#   ALL IS WORKING
+#----------------------------------------------------------------------
+def writeDict(file_name, dic):
+    fd = open(file_name, "w")
+    for k,v in dic.items():
+        print(k, v, file=fd)
+    fd.close()
+
+def writeDataSeries(file_name, ds):
+    fd = open(file_name, "w")
+    for d in ds:
+        print(d, file=fd)
+    fd.close()
+
+writeDict("d_triplets_old", d_triplets)
 #----------------------------------------------------------------------
 
 # At this stage, there are fields with names and no emails. 
 # Fill in the missing emails
-new_triplets = []
-print("----------------------------")
-print("New triplets")
-for t in new_triplets:
-    print(t)
-for t in triplets:
+#new_triplets = []
+#print("----------------------------")
+#print("New triplets")
+#for t in new_triplets:
+    #print(t)
+
+for k,v in d_triplets.items():
     #print((t[0], t[1], d_triplets[(t[0], t[1])]))
-    n = [t[0], t[1], d_triplets[(t[0], t[1])]]
-    if not n[2]:
+    print("--> d_triplets, key: ", k, ",  value= ", v)
+
+    #print("d_triplets[('','')], ", d_triplets[('','')])
+    #print("t[0], t[1]= ", t[0], t[1])
+    n = [k[0], k[1], d_triplets[(k[0], k[1])][2]]
+    #print("v= ", v, ",  k= ", k)
+    #print("n= ", n)
+    if n[2] == '':
+        #print("not n2")
         n[2] = "_".join(n[:-1])
-    new_triplets.append(tuple(n))
-    print(new_triplets[-1])
+    #new_triplets.append(tuple(n))
+    d_triplets[k] = tuple(n)
+    #print(new_triplets[-1])
+    # d_triplets now has all emails
+
+writeDict("email_dict.out", d_email)
+writeDict("d_missing.out", d_missing)
+writeDict("d_triplets.out", d_triplets)
+writeDataSeries("from.out", df['From'])
+writeDataSeries("to.out", df['To'])
+writeDataSeries("cc.out", df['CC'])
+#----------------------------------------------------------------------
+# 
+def processTriplet(i, triplet, d_missing, d_triplets):
+    # find first and last
+    if triplet[2]:
+        try:
+            triplet = d_missing[triplet[2]]
+        except:
+            pass
+    # find email
+    else:
+        try:
+            email = d_triplets[tuple(triplet[0:2])][2] 
+            triplet[2] = email
+        except:
+            pass
+    pass
+    print("%d, processTriplet, return triplet= "%i, triplet)
+    return triplet
+
+#----------------------------------------------------------------------
+
+print("cc_triplets")
+for i,triplet in enumerate(cc_triplets):
+    processTriplet(i, triplet, d_missing, d_triplets)
+
+print("to_triplets")
+for i,triplet in enumerate(to_triplets):
+    processTriplet(i, triplet, d_missing, d_triplets)
+
+print("from_triplets")
+for i,triplet in enumerate(from_triplets):
+    processTriplet(i, triplet, d_missing, d_triplets)
+
+#writeDataSeries("afrom.out", df['From'])  # a for after
+#writeDataSeries("ato.out", df['To'])
+#writeDataSeries("acc.out", df['CC'])
+
+print("End") 
+quit()
+quit()
 #----------------------------------------------------------------------
 
 for t in cc_triplets():
@@ -639,7 +754,7 @@ print(df['From'].head())
 #a  = df['From'].apply(lambda x: (x[0],x[1],d_triplets[(x[0],x[1])]))
 
 for t in df['From'].values:
-    print(email_dict[(t[2])])
+    print(d_email[(t[2])])
 
 
 print(a)
