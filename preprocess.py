@@ -120,6 +120,11 @@ def extractEmail(string):
     # Only keep first email found, and remove it from the string
     #print("orig string= ", string)
     print("extract email, string: ", string)
+    # Remove "jr", "sr" (and variations) from string
+    string = re.sub(r"([jJ|sS])[rR]\.?", " ", string)
+    # Remove PhD and variations
+    string = re.sub(r"[pP]\.?[hH]\.?\s*[dD]\.?", " ", string)
+
     s = re_email.search(string)
 
     if s:  # found email string
@@ -144,7 +149,7 @@ def extractEmail(string):
         #print("before extract, if: string: ", string)
         string = re.sub(r"[\[<\(]mailto.*?[\]>\)]", " ", string)
         #print("after extract, if: string: ", string)
-    else:
+    else:  # found no email string
         print("else s")
         #  " P.E.   J. Keith Dantin" ==> Keith J. Dantin
         #  Notice the double enclosure. \1 accesses the outer enclosure (( ))
@@ -171,26 +176,56 @@ def extractEmail(string):
     #print("after sub: string= ", string)
     #print("new string= ", string)
     #print("return email: ", email.lower())
-    return email.lower(), string
+    return email.lower().strip(), string
 
 
 def standardizeName(string): 
 # The emails have already been removed. All that is left is a single person's name
     print("standardize string: ", string)
+    # Remove acronyms
+    string = re.sub(r"\b([iI]{1,3}|LLC|(RLA|rla))\b", " ", string)
+    # A name will never occur before "City of Tallahassee". The email is already extracted.
+    string = re.sub(r"\bCity of Tallahassee.*$\b", "", string)
+    # Remove single letter words and acronyms
+    #string = re.sub(r"\b([A-Za-z]\.?|[iI]{1,3}|LLC|(RLA|rla))\b", " ", string)
+    # Remove words that are clearly not names, and might appear with the names
+    string = re.sub(r"\b([Ee]xecutive|[Dd]irector)\b", " ", string)
+    # Remove items in parenthesis (mail is already extracted) (non-greedy)
+    string = re.sub(r"\(.*?\)", '', string)
+    # Remove single letter words [F. or F] and acronyms (will this work here?)
+    string = re.sub(r"\b([A-Za-z0-9]\.?|[iI]{1,3}|(LLC|llc)|(RLA|rla))\b", " ", string)
+    # Remove multiple capital words. Dangerous because one can have JT as a first name.
+    
     # transform MikeWood to Mike Wood, for example. 
     string = re.sub(r"\b([A-Z][a-z]+)([A-Z][a-z]+)\b", r"\1 \2", string)
+    # fix previous transformation. Mc, De, Van, Von, get reattached
+    string = re.sub(r"\b(Mc|De|Van|Von) ([A-Z][a-z]+)\b", r"\1\2", string)
+    # Some string end in a comma with spaces as a result of preprocessing. Remove comma
+    # Sometimes, there is a dangly double quote or backslash at the end
+    string = re.sub(r",\s*[\"\\-]?\s*$", "", string)
+    print("after last comma removed, string= ", string)
+    # remove any words with an "@" sign, whether email or not. Sometimes emails linger
+    #string = re.sub(r"([\w\._-]+@[\w\._-])+", r"", string)
+    #print("standardize, after filter, string: ", string
+
     string = string.strip()
     if len(string) == 0:
         return '', '', ''
 
-    # remove commas and dots
-    string = re.sub(r"[<>\(\)\.\"]", "", string)
+    # remove dots, <>, (),  and &. Leave commas
+    string = re.sub(r"[<>\(\)\.\"&]+", "", string)
     # remove non alpha-numeric characters (leave space since it acts as a separator)
     string = re.sub(r"xa0|\\", " ", string)
-    #print("standardize, string sub= ", string)
+    # remove non-letters, followed by space at the end of the string. just to be sure. 
+    print("before last filter, string= ", string)
+    string = re.sub(r"[\W]+\s*$", "", string)
+    print("standardize, string sub= ", string)
+
 
     strings = string.split(',')
     first = last = middle = ''
+
+    print("process string: ", string)
 
     if len(strings) == 1:
         strings1 = strings[0].split(' ')
@@ -230,11 +265,13 @@ def standardizeName(string):
     #print("len(last) = ", len(last))  # 504 across all years. 
     #print("first= ", first, ", middle= ", middle, ", last= ", last)
     if len(last) == 1:
-        #print("return %s, %s, %s" % (middle, last, first))
+        print("return %s, %s, %s" % (middle, last, first))
+        print("Should not happen. I removed single letter initials.")
+        quit()
         return middle, last, first
     else:
         #print("return %s, %s, %s" % (first, middle, last))
-        return first, middle, last
+        return first, middle, last.split(" ")[-1]
 
 
 
@@ -350,6 +387,7 @@ def cleanDFColumn(df, col_name ):
         # to be further processed by extractEmail and standardizeName
 
         for i, person in enumerate(recipient_list):
+            print("\n")
             email, new_str = extractEmail(person)
             print("triplets: email= ", email, ",  new_str= ", new_str)
             f, m, l = standardizeName(new_str)
@@ -367,6 +405,7 @@ def cleanSenders(df):
     senders = []
     for rec in df['From']:
         sender = rec[1:-1].replace("'",'')
+        print("\n")
         email, new_str = extractEmail(sender)
         print("email from sender: ", email)
         #print("new_str= ", new_str)
@@ -420,8 +459,8 @@ for i in range(len(to_list)):
 
 unique_receivers = list(unique_receivers)
 unique_receivers.sort()
-for s in unique_receivers:
-    print("rec: ", s)
+#for s in unique_receivers:
+    #print("rec: ", s)
 
 print("nb unique receivers with emails: ", len(unique_receivers))
 
@@ -436,8 +475,8 @@ for i in range(len(cc_list)):
 
 unique_cc = list(unique_cc)
 unique_cc.sort()
-for s in unique_cc:
-    print("cc: ", s)
+#for s in unique_cc:
+    #print("cc: ", s)
 
 print("nb unique cc with emails: ", len(unique_cc))
 #------------------
@@ -457,8 +496,9 @@ def makeListTriplets(df, col):
     return triplets
 
 cc_triplets = makeListTriplets(df, "CC")
-for t in cc_triplets:
-    print("cc_triplets= ", t)
+#for t in cc_triplets:
+    #print("cc_triplets= ", t)
+
 to_triplets = makeListTriplets(df, "To")
 from_triplets = makeListTriplets(df, "From")
 #print("triplets")
