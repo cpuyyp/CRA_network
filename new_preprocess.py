@@ -320,9 +320,55 @@ for k,v, in d_A.items():
 print("after duplicate email removals")
 print("len(d_A)= ", len(d_A))
 
+# Create d_C,  a set of emails constructed from d_B whose records have a missing first or last name. 
+# Remove from d_B all records added to d_C
+d_C = {}
+to_remove = []
+print("before d_C: len(d_B)= ", len(d_B))
+for k,v in d_B.items():
+    if k[0] == '' or k[1] == '':
+        d_C[k] = v
+        to_remove.append(k)
+print("before removal, len(d_C)= ", d_C)
+
+for k in to_remove:
+    print("renove from d_C: ", k)
+    del d_B[k]
+
+print("after d_C: len(d_B)= ", len(d_B))  # d_B has been reduced
+print("after d_C: len(d_C)= ", len(d_C))
+
+# remove from d_C all elements found in d_B
+sB = set()
+for k,v in d_B.items():
+    print("v= ", v)
+    sB.add(v[2])
+to_remove = []
+
+for kC,vC in d_C.items():
+    if vC[2] in sB:
+       to_remove.append(kC)
+
+print("before d_C reduction, len(d_C)= ", len(d_C))
+for k in to_remove:
+    print("to_remove, k= ", k)
+    del d_C[k]
+print("after d_C reduction, len(d_C)= ", len(d_C))
+
+	
+
+# https://treyhunner.com/2016/02/how-to-merge-dictionaries-in-python/
+#d_final = dict(**d_A, **d_C, **d_B) # only work if **d_C is a string. Here it is a list
+#writeDict(d_final, "d_final_unpack")
+
 d_final = d_A.copy()
 for k,v in d_B.items():
    d_final[k] = v
+for k,v in d_C.items():
+   d_final[k] = v
+
+writeDict("d_final.out", d_final)
+embed()
 
 d_email_final = {}
 for k,v in d_final.items():
@@ -330,6 +376,8 @@ for k,v in d_final.items():
         d_email_final[v[2]] = v
     except:
         pass
+
+embed()
 
 #printDict(d_email_final, "email")
 print("len(d_final): ", len(d_final))
@@ -342,6 +390,10 @@ writeDict("d_final.out", d_final)
 writeDataSeries("from.out", df['From'])
 writeDataSeries("to.out", df['To'])
 writeDataSeries("cc.out", df['CC'])
+
+#----------------------------------------------------------------------
+# Create dictionary of unique emails based on d_final
+
 #----------------------------------------------------------------------
 # 
 import traceback

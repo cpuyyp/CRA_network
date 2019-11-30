@@ -6,28 +6,13 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
-#from datetime import datetime
 import numpy as np
-#import re
-#import pickle
 from IPython import embed
 from function_library import *
 
 #def dictFreq(in_dict):
 
 #----------------------------------------------------------------------
-# create name to index dictionary and index to name dictionary for later use
-def nameToIndexDict(unique_names):
-    name_id = {}
-    for idx,name in enumerate(unique_names):    # unique_names
-        name_id[name] = idx
-
-    id_name = {}
-    for idx,name in enumerate(unique_names):
-        id_name[idx] = name
-
-    return name_id, id_name
-
 #----------------------------------------------------------------------
 # create a square matrix to save number of emails sent and received by each person
 def emailsSentReceivedPerPerson(unique_names, email_dic_c):
@@ -40,31 +25,6 @@ def emailsSentReceivedPerPerson(unique_names, email_dic_c):
     np.sum(sender_to_recipient)
 
 #----------------------------------------------------------------------
-def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
-# create a list of send-rec pairs. Ignore messages that have more 
-# than max_rec recipients and more than max_cc cc: mails. 
-
-    d_pairs = defaultdict(list)
-    send = l_from   # list of triplets
-    to   = l_to     # list of lists of triplets
-    cc   = l_cc     # list of list of triplets
-
-    #for i in range(10):
-        #print("to[%d]= "%i, len(to[i]))
-
-    for i,s in enumerate(send):
-        print("==> i= ", i)
-        if (len(to[i]) > max_to): 
-            #print("> max, len(t)= ", len(to[i]))
-            continue
-        #print("==> keep, to[%d]= "%i, to[i]); 
-        for j,t in enumerate(to[i]):
-            #if to[0] == "": continue
-            #print("to: ", t, ",   s= ", s)
-            d_pairs[s[2]].append(t[2])
-
-    return d_pairs
-            
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 # name2id is better name than name_id
@@ -77,18 +37,9 @@ l_to   = fromPickle("to_list")
 l_from = fromPickle("from_list")
 l_cc   = fromPickle("cc_list")
 
-printList(l_to[0:10], "l_to")
-#print(len(l_to))
-#print(len(l_from))
-#print(len(l_cc))
-#embed()
-
 d_pairs = sendReceiveList(l_from, l_to, l_cc, 40, 40)
-print(type(d_pairs))
-printDict(d_pairs, "d_pairs")
-embed()
 
-
+#----------------------------------------------------------------------
 # name2id is better name than name_id
 unique_names = ['a', 'b']
 d_email = {}

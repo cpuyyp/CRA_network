@@ -428,3 +428,47 @@ def fromPickle(name):
         return  pickle.load(handle)
 
 #----------------------------------------------------------------------
+def nameToIndexDict(l_unique_names):
+# create name to index dictionary and index to name dictionary for later use
+# returns (name2id, id2name)
+    name2id = {}
+    for idx,name in enumerate(l_unique_names):    # unique_names
+        name2id[name] = idx
+
+    id2name = {}
+    for idx, name in enumerate(l_unique_names):
+        id2name[idx] = name
+
+    return name2id, id2name
+
+#----------------------------------------------------------------------
+def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
+# create a list of send-rec pairs. Ignore messages that have more 
+# than max_rec recipients and more than max_cc cc: mails. 
+
+    d_pairs = defaultdict(list)
+    send = l_from   # list of triplets
+    to   = l_to     # list of lists of triplets
+    cc   = l_cc     # list of list of triplets
+
+    #for i in range(10):
+        #print("to[%d]= "%i, len(to[i]))
+
+    for i,s in enumerate(send):
+        print("==> i= ", i)
+        if (len(to[i]) > max_to): 
+            #print("> max, len(t)= ", len(to[i]))
+            continue
+        #print("==> keep, to[%d]= "%i, to[i]); 
+        for j,t in enumerate(to[i]):
+            #if to[0] == "": continue
+            #print("to: ", t, ",   s= ", s)
+            d_pairs[s[2]].append(t[2])
+
+    return d_pairs
+            
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
