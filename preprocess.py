@@ -676,19 +676,26 @@ def processTriplet(ix, triplet, d_final, d_email_final):
     # find first and last
     # triplet can have missing components
     # 1. missing names: search email in s
+    print("enter triplet: ", triplet)
 
     try:
         triplet = d_email_final[triplet[2]]
+        #print("completed try: triplet= ", triplet)
     except:
+        #print("enter except")
         try:
+            #print("   enter try: triplet= ", triplet)
             triplet = d_final[tuple(triplet[0:2])]
+            #print("   completed  try: triplet= ", triplet)
         except Exception as error:
+            #print("enter final except: triplet= ", triplet)
             #logger.exception(error)
             cond = not (triplet[0] == "" and triplet[1] == "" and triplet[2] == "")
             if cond: 
                 # the only expected outcome here is ("", "", "")
                 print("processTriplet: should not happen (", triplet, ")")
 
+    print("return triplet: ", triplet)
     return triplet
 
 #----------------------------------------------------------------------
@@ -710,10 +717,14 @@ def processColumn(df, col, d_final, d_email_final):
     # Each row is a list of triplets
     else:
         triplet_list_list = []
-        df_list = df[col].values.tolist()
-        for row in range(len(df_list)):
+        df_list = df[col].tolist()
+        #for row in range(len(df_list)):
+        for i, df_row in enumerate(df_list):
+            print("=== row %d" % i)
+            if i == 5: break
             triplet_list = []
-            for j,lst in enumerate(df_list[row]):
+            for j,lst in enumerate(df_row):
+                print("processTriplet, lst[%d]= "%j, lst)
                 triplet = processTriplet(j, lst, d_final, d_email_final)
                 triplet_list.append(triplet)
             triplet_list_list.append(triplet_list)

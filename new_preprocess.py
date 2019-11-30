@@ -358,12 +358,11 @@ cc_list = processColumn(df, 'CC', d_final, d_email_final)
 # list
 from_list = processColumn(df, 'From', d_final, d_email_final)
 
-cc_list = fromPickle("cc_list")
+print(len(cc_list))
+print(len(to_list))
+print(len(from_list))
+embed()
 
-print("len(cc_list): ", len(cc_list))
-for i in range(20): 
-	print("len(cc_list[%d]): "%i, len(cc_list[i]), cc_list[i])
-	
 toPickle(cc_list, "cc_list")
 toPickle(to_list, "to_list")
 toPickle(from_list, "from_list")
@@ -374,15 +373,6 @@ toPickle(from_list, "from_list")
 #printList(cc_list, "processed CC")
 #printList(from_list, "processed_from")
 #----------------------------------------------------------------------
-
-# replace dataframe columns with udpated columns
-df['From'] = from_list
-df['To']   = to_list
-df['CC']   = cc_list
-
-print(to_list[0])
-print(type(to_list[0]))
-print(len(to_list[0]))
 
 # save clean dataframe ready for graphing and statistics computation
 # This approach is not really useful, since I a dataframe column must 
