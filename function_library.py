@@ -160,7 +160,6 @@ def standardizeName(string):
 
     elif len(strings) > 2:
         print("length(strings)>2, should not happen: ", strings)
-        #quit()
 
     # The csv file sometimes has names in the form "last first middle" instead of "last, first middle"
     # In this case, I must reorder the names. Check the length of middle.strip(). If it is 1, then swap
@@ -260,7 +259,6 @@ def cleanDFColumn(df, col_name, d_compiled_re):
             recipient_list[i] = [f,l,email]
             #print("triplets: f,l", [f,l])
         recipients.append(recipient_list)
-        #if flag: quit()
     #print("len(col_name): ", len(df[col_name]))
     #print("len(recipients): ", len(recipients))
     df[col_name] = recipients

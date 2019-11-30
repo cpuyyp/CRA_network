@@ -365,8 +365,15 @@ df['From'] = from_list
 df['To']   = to_list
 df['CC']   = cc_list
 
+print("gordon")
+print(df.head())
+embed()
+
 # save clean dataframe ready for graphing and statistics computation
-df.to_csv("clean_outpout.csv")
+cols = df.columns
+print("df cols= ", cols)
+df.drop(columns=cols[0], inplace=True)
+df.to_csv("clean_outpout.csv", index=True, index_label='Row_index')
 embed()
 quit()
 #----------------------------------------------------------------------
