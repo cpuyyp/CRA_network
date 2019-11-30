@@ -728,6 +728,11 @@ for kA,vA in d_A.items():
 for key in to_remove:
     del d_A[key]
 
+# Maybe not required
+sA = set()
+for k,v, in d_A.items():
+    sA.add(v[2])
+
 print("after duplicate email removals")
 print("len(d_A)= ", len(d_A))
 
@@ -735,6 +740,19 @@ d_final = d_A.copy()
 for k,v in d_B.items():
    d_final[k] = v
 
+d_email_final = {}
+for k,v in d_final.items():
+    try:
+        d_email_final[v[2]] = v
+    except:
+        pass
+
+for k,v in d_email_final.items():
+    print("email: ", k, v)
+
+print("len(d_final): ", len(d_final))
+
+writeDict("d_email_final.out", d_email_final)
 writeDict("email_dict.out", d_email)
 writeDict("d_missing.out", d_missing)
 writeDict("d_triplets.out", d_triplets)
@@ -744,42 +762,50 @@ writeDataSeries("to.out", df['To'])
 writeDataSeries("cc.out", df['CC'])
 #----------------------------------------------------------------------
 # 
-def processTriplet(ix, triplet, d_A, d_B):
+import traceback
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+def processTriplet(ix, triplet, d_final, d_email_final):
+    # d_A: dictionary: 
     # FIX THIS METHOD
     # find first and last
-    if triplet[2]:
+    # triplet can have missing comonents
+    # 1. missing names: search email in s
+
+    print("triplet= ", triplet)
+    try:
+        triplet = d_email_final[triplet[2]]
+        print("1st try: triplet= ", triplet)
+    except:
         try:
-            triplet = d_missing[triplet[2]]
-        except:
-            try:
-                email = d_triplets[tuple(triplet[0:2])][2] 
-                triplet[2] = email
-            except:
-                pass
-    # find email
-    else:
-        try:
-            email = d_triplets[tuple(triplet[0:2])][2] 
-            triplet[2] = email
-        except:
-            pass
-    pass
-    #print("%d, processTriplet, return triplet= "%ix, triplet)
+            print("tuple(triplet[0:2]: ", tuple(triplet[0:2]))
+            triplet = d_final[tuple(triplet[0:2])]
+            print("2nd try: triplet= ", triplet)
+        except Exception as error:
+            #logger.exception(error)
+            print("should not happen (", triplet, ")")
+            #quit()
+
     return triplet
 
 #----------------------------------------------------------------------
-def processColumn(df, col, d_A, d_B):
+def processColumn(df, col, d_final, d_email_final):
 # Go through the column, creating a list of triplets. 
 # Make a list of triplets from a database column
 # Create a list of email triplets
 # Each row is a triplet
 
+    # Each row is a single triplet
     if col == 'From':
         triplets = []
         df_list = df[col].values.tolist()
-        for row in df_list:
-            print("From: ", row)
+        for j, row in enumerate(df_list):
+            triplet = processTriplet(j, row, d_final, d_email_final)
+            triplets.append(triplet)
         return triplets
+
     # Each row is a list of triplets
     else:
         triplet_list_list = []
@@ -789,21 +815,30 @@ def processColumn(df, col, d_A, d_B):
             #print("to/cc: ", row)
             for j,lst in enumerate(df_list[row]):
                 #print("  lst= ", lst)
-                triplet = processTriplet(j, lst, d_A, d_B)
+                triplet = processTriplet(j, lst, d_final, d_email_final)
                 triplet_list.append(triplet)
-                pass
             triplet_list_list.append(triplet_list)
-        #print(triplet_list_list)
+        #print("triplet_list_list: ", triplet_list_list)
         return triplet_list_list
     
 #----------------------------------------------------------------------
 print("print df['To']")
 print(df['To'].head(10))
 print("processColumn")
-list_list = processColumn(df, 'To', d_missing, d_triplets)
-print("After processing: print df['To']")
-for i in range(10):
-    print('processed To: ', list_list[i])
+to_list = processColumn(df, 'To', d_final, d_email_final)
+for l in to_list:
+    print('processed To: ', l)
+
+cc_list = processColumn(df, 'CC', d_final, d_email_final)
+for l in cc_list:
+    print('processed CC: ', l)
+
+# from_list: NOT WORKING
+from_list = processColumn(df, 'From', d_final, d_email_final)
+print("before")
+for l in from_list:
+    print('processed from: ', l)
+print("after")
 quit()
 #----------------------------------------------------------------------
 print("cc_triplets")
