@@ -455,7 +455,6 @@ def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
         #print("to[%d]= "%i, len(to[i]))
 
     for i,s in enumerate(send):
-        print("==> i= ", i)
         if (len(to[i]) > max_to): 
             #print("> max, len(t)= ", len(to[i]))
             continue
@@ -468,6 +467,34 @@ def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
     return d_pairs
             
 #----------------------------------------------------------------------
+def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_list", cc="cc_list"):
+    l_cc = fromPickle(cc)
+    l_to = fromPickle(to)
+    l_sender = fromPickle(sender)
+    #print(len(l_cc), len(l_to), len(l_sender))
+
+    s_to_r = np.zeros((len(unique_names),len(unique_names)), dtype='int') 
+
+    for i, s in enumerate(l_sender):
+        try:
+            sx = name2id[s[2]]   # x means integer index
+        except:
+            continue
+        for r in l_cc[i]:
+            try:
+                rx = name2id[r[2]]
+                s_to_r[sx, rx] += 1
+            except:
+                pass
+        for t in l_to[i]:
+            try:
+                tx = name2id[t[2]]
+                s_to_r[sx, tx] += 1
+            except:
+                pass
+
+    return s_to_r
+
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------

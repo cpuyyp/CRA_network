@@ -362,13 +362,11 @@ print("after d_C reduction, len(d_C)= ", len(d_C))
 #writeDict(d_final, "d_final_unpack")
 
 d_final = d_A.copy()
-for k,v in d_B.items():
-   d_final[k] = v
 for k,v in d_C.items():
    d_final[k] = v
+for k,v in d_B.items():
+   d_final[k] = v
 
-writeDict("d_final.out", d_final)
-embed()
 
 d_email_final = {}
 for k,v in d_final.items():
@@ -376,8 +374,6 @@ for k,v in d_final.items():
         d_email_final[v[2]] = v
     except:
         pass
-
-embed()
 
 #printDict(d_email_final, "email")
 print("len(d_final): ", len(d_final))
@@ -413,11 +409,11 @@ from_list = processColumn(df, 'From', d_final, d_email_final)
 print(len(cc_list))
 print(len(to_list))
 print(len(from_list))
-embed()
 
 toPickle(cc_list, "cc_list")
 toPickle(to_list, "to_list")
 toPickle(from_list, "from_list")
+toPickle(d_final, "d_final")
 
 # pickle these three lists
 
@@ -437,7 +433,6 @@ cols = df.columns
 print("df cols= ", cols)
 df.drop(columns=cols[0], inplace=True)
 df.to_csv("clean_output_noindex.csv", index=False)
-embed()
 quit()
 #----------------------------------------------------------------------
 
