@@ -51,6 +51,8 @@ def readDataFrame(file_name, read_cached=True):
         cols = df.columns
         df = df.drop(columns=[cols[0], cols[1]]) 
         #print(df.head()); quit()
+        print("Cached data: output_redued.csv")
+        quit()
 
     df = df1
     #print(df.head())
@@ -279,6 +281,7 @@ def standardizeName(string):
 df = readDataFrame("output_reduced.csv", read_cached=True)
 
 df = restrictEmailsToYears(df, low=2012, high=2018)
+df.to_csv("xxx.csv")
 # In[5]:
 
 # convert pandas df to dictionary, only keep sender/recipient names and sent time
@@ -496,8 +499,8 @@ def makeListTriplets(df, col):
     return triplets
 
 cc_triplets = makeListTriplets(df, "CC")
-#for t in cc_triplets:
-    #print("cc_triplets= ", t)
+for t in cc_triplets:
+    print("cc_triplets= ", t)
 
 to_triplets = makeListTriplets(df, "To")
 from_triplets = makeListTriplets(df, "From")
@@ -646,8 +649,8 @@ def writeDict(file_name, dic):
 
 def writeDataSeries(file_name, ds):
     fd = open(file_name, "w")
-    for d in ds:
-        print(d, file=fd)
+    for i,d in enumerate(ds):
+        print(i, d, file=fd)
     fd.close()
 
 writeDict("d_triplets_old", d_triplets)
@@ -678,21 +681,81 @@ for k,v in d_triplets.items():
     #print(new_triplets[-1])
     # d_triplets now has all emails
 
+# There are mails with names (f_x, l_x) that exist with real names. These
+# emails should be removed. 
+# create a set with these emails with names (f_x, l_x)
+s_emails = set()
+for k,v in d_triplets.items():
+    try:
+        if k[0][1] == '_' and k[1][1] == '_':
+            s_emails.add(v[2])
+    except:
+        pass
+
+
+# create set A (triplets with f_x, l_x)
+# create set B (triplets with f_x, l_x)
+d_A = {}
+d_B = {}
+for k,v in d_triplets.items():
+    try:
+        if k[0][1] == "_" and k[1][1] == "_":
+            d_A[k] = v         
+        else:
+            d_B[k] = v         
+    except:  # handles one name being ""
+        d_B[k] = v         
+
+#print("== count= %d ==== "%count)
+#print(s_emails)
+
+print("len(d_triplets): ", len(d_triplets))
+print("len(d_A): ", len(d_A))
+print("len(d_B): ", len(d_B))
+print("d_B= ", d_B)
+
+# remove non-unique emails
+sB = set()
+to_remove = []
+
+for k,v in d_B.items():
+    sB.add(v[2])
+
+for kA,vA in d_A.items():
+    if vA[2] in sB:
+        to_remove.append(kA)
+
+for key in to_remove:
+    del d_A[key]
+
+print("after duplicate email removals")
+print("len(d_A)= ", len(d_A))
+
+d_final = d_A.copy()
+for k,v in d_B.items():
+   d_final[k] = v
+
 writeDict("email_dict.out", d_email)
 writeDict("d_missing.out", d_missing)
 writeDict("d_triplets.out", d_triplets)
+writeDict("d_final.out", d_final)
 writeDataSeries("from.out", df['From'])
 writeDataSeries("to.out", df['To'])
 writeDataSeries("cc.out", df['CC'])
 #----------------------------------------------------------------------
 # 
-def processTriplet(i, triplet, d_missing, d_triplets):
+def processTriplet(ix, triplet, d_A, d_B):
+    # FIX THIS METHOD
     # find first and last
     if triplet[2]:
         try:
             triplet = d_missing[triplet[2]]
         except:
-            pass
+            try:
+                email = d_triplets[tuple(triplet[0:2])][2] 
+                triplet[2] = email
+            except:
+                pass
     # find email
     else:
         try:
@@ -701,11 +764,48 @@ def processTriplet(i, triplet, d_missing, d_triplets):
         except:
             pass
     pass
-    print("%d, processTriplet, return triplet= "%i, triplet)
+    #print("%d, processTriplet, return triplet= "%ix, triplet)
     return triplet
 
 #----------------------------------------------------------------------
+def processColumn(df, col, d_A, d_B):
+# Go through the column, creating a list of triplets. 
+# Make a list of triplets from a database column
+# Create a list of email triplets
+# Each row is a triplet
 
+    if col == 'From':
+        triplets = []
+        df_list = df[col].values.tolist()
+        for row in df_list:
+            print("From: ", row)
+        return triplets
+    # Each row is a list of triplets
+    else:
+        triplet_list_list = []
+        df_list = df[col].values.tolist()
+        for row in range(len(df_list)):
+            triplet_list = []
+            #print("to/cc: ", row)
+            for j,lst in enumerate(df_list[row]):
+                #print("  lst= ", lst)
+                triplet = processTriplet(j, lst, d_A, d_B)
+                triplet_list.append(triplet)
+                pass
+            triplet_list_list.append(triplet_list)
+        #print(triplet_list_list)
+        return triplet_list_list
+    
+#----------------------------------------------------------------------
+print("print df['To']")
+print(df['To'].head(10))
+print("processColumn")
+list_list = processColumn(df, 'To', d_missing, d_triplets)
+print("After processing: print df['To']")
+for i in range(10):
+    print('processed To: ', list_list[i])
+quit()
+#----------------------------------------------------------------------
 print("cc_triplets")
 for i,triplet in enumerate(cc_triplets):
     processTriplet(i, triplet, d_missing, d_triplets)
