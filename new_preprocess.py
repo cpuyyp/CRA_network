@@ -351,9 +351,24 @@ logger = logging.getLogger(__name__)
 
 #----------------------------------------------------------------------
 
+# list of lists
 to_list = processColumn(df, 'To', d_final, d_email_final)
+# list of lists
 cc_list = processColumn(df, 'CC', d_final, d_email_final)
+# list
 from_list = processColumn(df, 'From', d_final, d_email_final)
+
+cc_list = fromPickle("cc_list")
+
+print("len(cc_list): ", len(cc_list))
+for i in range(20): 
+	print("len(cc_list[%d]): "%i, len(cc_list[i]), cc_list[i])
+	
+toPickle(cc_list, "cc_list")
+toPickle(to_list, "to_list")
+toPickle(from_list, "from_list")
+
+# pickle these three lists
 
 #printList(to_list, "processed To")
 #printList(cc_list, "processed CC")
@@ -365,15 +380,21 @@ df['From'] = from_list
 df['To']   = to_list
 df['CC']   = cc_list
 
-print("gordon")
-print(df.head())
-embed()
+print(to_list[0])
+print(type(to_list[0]))
+print(len(to_list[0]))
 
 # save clean dataframe ready for graphing and statistics computation
+# This approach is not really useful, since I a dataframe column must 
+# be a basic type (data is stored in numpy arrays). Strange types are 
+# converted to strings. 
+# dataframes with 
+
+
 cols = df.columns
 print("df cols= ", cols)
 df.drop(columns=cols[0], inplace=True)
-df.to_csv("clean_outpout.csv", index=True, index_label='Row_index')
+df.to_csv("clean_output_noindex.csv", index=False)
 embed()
 quit()
 #----------------------------------------------------------------------

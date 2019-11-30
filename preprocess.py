@@ -734,9 +734,11 @@ from_list = processColumn(df, 'From', d_final, d_email_final)
 df['From'] = from_list
 df['To']   = to_list
 df['CC']   = cc_list
+print(df.columns)
 
 # save clean dataframe ready for graphing and statistics computation
-df.to_csv("clean_outpout.csv")
+df.to_csv("clean_output.csv", index=False)
+df.to_csv("clean_output_index.csv", index=True)
 embed()
 quit()
 #----------------------------------------------------------------------

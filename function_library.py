@@ -7,6 +7,7 @@ import numpy as np
 import re
 import pickle
 #from IPython import embed
+from collections import defaultdict
 
 import traceback
 import logging
@@ -378,3 +379,35 @@ def processColumn(df, col, d_final, d_email_final):
     
 #----------------------------------------------------------------------
 
+def dictFreq(in_dict):
+# generate frequency distribution of dictionary values
+
+    d_freq = defaultdict(int)  # initialize to zero by default
+    for k,v in in_dict:
+        d_freq[v] += 1
+
+    for k,v in d_freq:
+        print(v)
+
+#----------------------------------------------------------------------
+def listFreq(in_list):
+# generate frequency distribution of dictionary values
+
+    d_freq = defaultdict(int)  # initialize to zero by default
+    for k in in_list:
+        d_freq[k] += 1
+
+    for k,v in d_freq:
+        print(v)
+
+#----------------------------------------------------------------------
+def toPickle(a_list, name):
+    with open(name+".pickle", 'wb') as handle:
+        pickle.dump(a_list, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+#----------------------------------------------------------------------
+def fromPickle(name):
+    with open(name+".pickle", 'rb') as handle:
+        return  pickle.load(handle)
+
+#----------------------------------------------------------------------
