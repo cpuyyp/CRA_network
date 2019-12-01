@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 import re
 import pickle
-#from IPython import embed
+from IPython import embed
 from collections import defaultdict
 
 import traceback
@@ -14,24 +14,20 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-def readDataFrame(file_name, read_cached=True):
-    df1 = pd.read_csv(file_name, index_col=False)
-
-    if not read_cached:  # only set to 1 in order to generate the file output_reduced.csv
-        print(df1.columns)
-        df = df1.drop(columns=["Subject", "Attachments", "Body"])
-        df.to_csv("output_reduced.csv", index_label="Index", index=True)
-        cols = df.columns
-        df = df.drop(columns=[cols[0], cols[1]]) 
-        print("Cached data: output_redued.csv")
-        quit()
-
-    df = df1
+def readDataFrame(in_filename, cached_filename=None):
+# if cached_file_name is not None, write a cached file (smaller in size)
+# if cached_file_name is None: read in_file_name and use the associated he dataframe
+    df = pd.read_csv(in_filename, usecols=['From', 'Sent', 'To', 'CC'])
     cols = df.columns
-    df = df.drop(columns=[cols[0], cols[1]]) 
-    df['Sent'] = pd.to_datetime(df['Sent'])
-    df = df[df['Sent'] > datetime(1900, 1, 1, 0, 0, 0)]
+    print("df columns: ", cols) 
+
+    if cached_filename:  # only set to 1 in order to generate the file cached_filename
+        df.to_csv(cached_filename, index_label="Index", index=False)
+        cols = df.columns
+        print("Cached data in file: ", cached_filename)
+        df = pd.read_csv(cached_filename, index_col=False)
+
+    df['Sent']    = pd.to_datetime(df['Sent'])
     df = df.reset_index(drop=True)
     return df
 
@@ -496,6 +492,13 @@ def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_lis
     return s_to_r
 
 #----------------------------------------------------------------------
+def addTimeframes(df):
+    df['week']    = df['Sent'].dt.week
+    df['weekday'] = df['Sent'].dt.weekday
+    df['month']   = df['Sent'].dt.month
+    df['year']    = df['Sent'].dt.year
+    df['hour']    = df['Sent'].dt.hour
+    return df
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------

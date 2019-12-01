@@ -26,19 +26,22 @@ import pickle
 from IPython import embed
 from function_library import *
 
-
 # Ideally, have a dictionary of all the compiled searches for efficient
 re_email = re.compile(r'([0-9a-zA-Z_\.]*\.?\w+@[0-9a-zA-Z._-]*)')
 
 d_compiled_re = {}
 d_compiled_re['email'] = re.compile(r'([0-9a-zA-Z_\.]*\.?\w+@[0-9a-zA-Z._-]*)')
 
+# Either read from full file to create a reduced file (two arguments to readDataFrame)
+# Or     read from specified file only. 
+# In both cases, continue processing
 
-#df = readDataFrame("output4.csv", read_cached=False)
-df = readDataFrame("output_reduced.csv", read_cached=True)
+df = readDataFrame("output4.csv", "output_reduced.csv")
+#df = readDataFrame("output_reduced.csv")
 
 df = restrictEmailsToYears(df, low=2012, high=2018)
-df.to_csv("xxx.csv")
+df = addTimeframes(df)
+embed()
 
 # convert pandas df to dictionary, only keep sender/recipient names and sent time
 email_dic = {}
@@ -409,6 +412,7 @@ from_list = processColumn(df, 'From', d_final, d_email_final)
 print(len(cc_list))
 print(len(to_list))
 print(len(from_list))
+
 
 toPickle(cc_list, "cc_list")
 toPickle(to_list, "to_list")
