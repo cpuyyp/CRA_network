@@ -419,9 +419,19 @@ toPickle(to_list, "to_list")
 toPickle(from_list, "from_list")
 toPickle(d_final, "d_final")
 
+# pickle all the rest columns
 l_sent = df['Sent'].tolist()
 toPickle(l_sent, 'sent_list')
-
+l_sent = df['year'].tolist()
+toPickle(l_sent, 'year_list')
+l_sent = df['month'].tolist()
+toPickle(l_sent, 'month_list')
+l_sent = df['week'].tolist()
+toPickle(l_sent, 'week_list')
+l_sent = df['weekday'].tolist()
+toPickle(l_sent, 'week_list')
+l_sent = df['hour'].tolist()
+toPickle(l_sent, 'hour_list')
 # pickle these three lists
 
 #printList(to_list, "processed To")
@@ -438,7 +448,7 @@ toPickle(l_sent, 'sent_list')
 
 cols = df.columns
 print("df cols= ", cols)
-df.drop(columns=cols[0], inplace=True)
+# df.drop(columns=cols[0], inplace=True) # you are dropping the column 'From'
 df.to_csv("clean_output_noindex.csv", index=False)
 quit()
 #----------------------------------------------------------------------

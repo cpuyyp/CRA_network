@@ -19,7 +19,7 @@ def readDataFrame(in_filename, cached_filename=None):
 # if cached_file_name is None: read in_file_name and use the associated he dataframe
     df = pd.read_csv(in_filename, usecols=['From', 'Sent', 'To', 'CC'])
     cols = df.columns
-    print("df columns: ", cols) 
+    print("df columns: ", cols)
 
     if cached_filename:  # only set to 1 in order to generate the file cached_filename
         df.to_csv(cached_filename, index_label="Index", index=False)
@@ -45,30 +45,30 @@ def extractEmail(string, compiled_re):
         #print("if s")
         email = compiled_re['email'].findall(string)[0]
         email = re.sub(r"xa0|\\", " ", email)
-        
+
         # Email is removed from string
         string = string[:s.start()] + string[s.end():]
         # Remove Abbreviations with two or more letters with a dot
         # \s is whitespace
         string = re.sub(r",(\s*[A-Z][\.]?){2,}", " ", string)
-        string = re.sub(email, "", string) 
-        string = re.sub(r"<>", "", string) 
-        string = re.sub(r"\[mailto:\]", "", string) 
+        string = re.sub(email, "", string)
+        string = re.sub(r"<>", "", string)
+        string = re.sub(r"\[mailto:\]", "", string)
         string = re.sub(r"xa0|\\", " ", string)
-        string = re.sub(r"\(\)", "", string) 
+        string = re.sub(r"\(\)", "", string)
         string = re.sub(r"\b(MD|Major)\b", " ", string)  # MD: Medical Doctor
         string = string.strip()
         string = re.sub(r"[\[<\(]mailto.*?[\]>\)]", " ", string)
     else:  # found no email string
         #  " P.E.   J. Keith Dantin" ==> Keith J. Dantin
         #  Notice the double enclosure. \1 accesses the outer enclosure (( ))
-        string = re.sub(r"(([A-Z][\.]?){2,})\s+([A-Z][\.]?)\s+(\w+)\s+(\w+)", 
+        string = re.sub(r"(([A-Z][\.]?){2,})\s+([A-Z][\.]?)\s+(\w+)\s+(\w+)",
                         r"\4 \3 \5", string)
         # PC Wu Asst:  Elaine Mager"" <emager@ci.pensacola.fl.us>,
         # transform to:   Elaine Mager"" <emager@ci.pensacola.fl.us>
         #  ",  P.E.J." ==>  " "
         string = re.sub(r",(\s*[A-Z][\.]?){2,}", " ", string)
-        # Danger: Acceptable is 
+        # Danger: Acceptable is
         #      first last, abbrev
         #      first middle last, abbrev
         #   Not acceptable
@@ -83,7 +83,7 @@ def extractEmail(string, compiled_re):
     return email.lower().strip(), string
 
 
-def standardizeName(string): 
+def standardizeName(string):
 # The emails have already been removed. All that is left is a single person's name
     #print("standardize string: ", string)
     # Remove acronyms
@@ -99,8 +99,8 @@ def standardizeName(string):
     # Remove single letter words [F. or F] and acronyms (will this work here?)
     string = re.sub(r"\b([A-Za-z0-9]\.?|[iI]{1,3}|(LLC|llc)|(RLA|rla))\b", " ", string)
     # Remove multiple capital words. Dangerous because one can have JT as a first name.
-    
-    # transform MikeWood to Mike Wood, for example. 
+
+    # transform MikeWood to Mike Wood, for example.
     string = re.sub(r"\b([A-Z][a-z]+)([A-Z][a-z]+)\b", r"\1 \2", string)
     # fix previous transformation. Mc, De, Van, Von, get reattached
     string = re.sub(r"\b(Mc|De|Van|Von) ([A-Z][a-z]+)\b", r"\1\2", string)
@@ -120,7 +120,7 @@ def standardizeName(string):
     string = re.sub(r"[<>\(\)\.\"&]+", "", string)
     # remove non alpha-numeric characters (leave space since it acts as a separator)
     string = re.sub(r"xa0|\\", " ", string)
-    # remove non-letters, followed by space at the end of the string. just to be sure. 
+    # remove non-letters, followed by space at the end of the string. just to be sure.
     #print("before last filter, string= ", string)
     string = re.sub(r"[\W]+\s*$", "", string)
     #print("standardize, string sub= ", string)
@@ -178,7 +178,7 @@ def cleanDFColumn(df, col_name, d_compiled_re):
     recipients = []
     df.reset_index()  # indices now go from 0, upward
     for irec, rec in enumerate(df[col_name]):
-        # string = "gsd BCC: af ;lkjaf] af j]". Must be done before the string is broken up. 
+        # string = "gsd BCC: af ;lkjaf] af j]". Must be done before the string is broken up.
         # Note te use of *?  (non-greedy search). Without it, the search would go to the last bracket
         rec= re.sub(r"(BCC:.*?])", r"]", rec)
 
@@ -186,7 +186,7 @@ def cleanDFColumn(df, col_name, d_compiled_re):
 
         if re.search("tosteen@moorebass.com", recipient_string):
             flag = True
-        else: 
+        else:
             flag = False
 
         # remove strings that have too many words
@@ -194,7 +194,7 @@ def cleanDFColumn(df, col_name, d_compiled_re):
             recipient_string = ''
 
         r1 = recipient_string.split(';')
-        if (len(r1) > 50): 
+        if (len(r1) > 50):
             #print("number of ; splits: ", len(r1))
             # Do not consider recipient lists greater than 10
             # It is unlikely they are significant
@@ -202,24 +202,24 @@ def cleanDFColumn(df, col_name, d_compiled_re):
             #df.loc[irec, col_name] = '[""]'
             recipient_string = ''
             r1 = ['']
-            
+
 
         if len(r1) > 1:
             recipient_list = r1
         elif len(r1) == 1:
-           r2 = recipient_string.split(',') 
+           r2 = recipient_string.split(',')
            # remove strings that have too many fields
            if (len(recipient_string.split(',')) > 50):
                recipient_string = ''
-           #if (len(r2) > 10): 
+           #if (len(r2) > 10):
                  #print("number of , splits: ", len(r1))
            if len(r2) == 1:
               recipient_list = r2
               # no further splits necessary. Single name or single email. Pass to standardizeName()
-           else:  # If there are double quotes, remove commas from double quotes, 
-               # if the recipient list is all letters, spaces, "-", "." and commas, 
+           else:  # If there are double quotes, remove commas from double quotes,
+               # if the recipient list is all letters, spaces, "-", "." and commas,
                # then we are dealing with a single user name.
-               # pattern = r"[A-Za-z\._-,\s]+" 
+               # pattern = r"[A-Za-z\._-,\s]+"
                # match entire string with letters, comma, "-"
                pattern = r"(^[A-Za-z, \.]+$)"
                #print("recipient_list= ", recipient_list)
@@ -233,12 +233,12 @@ def cleanDFColumn(df, col_name, d_compiled_re):
                    pattern = r"\s*\w+\s*,\s*\w+\s*"
                    m = re.search(pattern, recipient_string)
                    if not m:
-                       recipient_list = recipient_string.split(',') 
+                       recipient_list = recipient_string.split(',')
                        #print("recipient_list= ", recipient_list)
                    else:
                        nb_commas = len(re.findall(",", recipient_string))
                        #print("nb commas= ", nb_commas)
-                       if nb_commas > 2:  # not foolproof. There might be only two emails. 
+                       if nb_commas > 2:  # not foolproof. There might be only two emails.
                            recipient_list = recipient_string.split(',')
                        else:
                            recipient_list = [recipient_string]
@@ -272,7 +272,7 @@ def cleanSenders(df, d_compiled_re):
         f, m, l = standardizeName(new_str)
         #print("sender   ",   (f,l))
         # strip() should not be necessary, but the line with "sheila" has an additional leading space
-        # I do not know why. 
+        # I do not know why.
         senders.append([f,l,email])  # ignore the middle initials
     df["From"] = senders
     return df
@@ -330,7 +330,7 @@ def writeDataSeries(file_name, ds):
 
 #---------------------------------------------------------------------
 def processTriplet(ix, triplet, d_final, d_email_final):
-    # d_A: dictionary: 
+    # d_A: dictionary:
     # find first and last
     # triplet can have missing components
     # 1. missing names: search email in s
@@ -349,7 +349,7 @@ def processTriplet(ix, triplet, d_final, d_email_final):
             #print("enter final except: triplet= ", triplet)
             #logger.exception(error)
             cond = not (triplet[0] == "" and triplet[1] == "" and triplet[2] == "")
-            if cond: 
+            if cond:
                 # the only expected outcome here is ("", "", "")
                 print("processTriplet: should not happen (", triplet, ")")
 
@@ -358,7 +358,7 @@ def processTriplet(ix, triplet, d_final, d_email_final):
 
 #----------------------------------------------------------------------
 def processColumn(df, col, d_final, d_email_final):
-# Go through the column, creating a list of triplets. 
+# Go through the column, creating a list of triplets.
 # Make a list of triplets from a database column
 # Create a list of email triplets
 # Each row is a triplet
@@ -386,10 +386,10 @@ def processColumn(df, col, d_final, d_email_final):
                 triplet_list.append(triplet)
             triplet_list_list.append(triplet_list)
         return triplet_list_list
-    
+
 #----------------------------------------------------------------------
 
-    
+
 #----------------------------------------------------------------------
 
 def dictFreq(in_dict):
@@ -439,8 +439,8 @@ def nameToIndexDict(l_unique_names):
 
 #----------------------------------------------------------------------
 def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
-# create a list of send-rec pairs. Ignore messages that have more 
-# than max_rec recipients and more than max_cc cc: mails. 
+# create a list of send-rec pairs. Ignore messages that have more
+# than max_rec recipients and more than max_cc cc: mails.
 
     d_pairs = defaultdict(list)
     send = l_from   # list of triplets
@@ -451,17 +451,17 @@ def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
         #print("to[%d]= "%i, len(to[i]))
 
     for i,s in enumerate(send):
-        if (len(to[i]) > max_to): 
+        if (len(to[i]) > max_to):
             #print("> max, len(t)= ", len(to[i]))
             continue
-        #print("==> keep, to[%d]= "%i, to[i]); 
+        #print("==> keep, to[%d]= "%i, to[i]);
         for j,t in enumerate(to[i]):
             #if to[0] == "": continue
             #print("to: ", t, ",   s= ", s)
             d_pairs[s[2]].append(t[2])
 
     return d_pairs
-            
+
 #----------------------------------------------------------------------
 def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_list", cc="cc_list"):
     l_cc = fromPickle(cc)
@@ -469,7 +469,7 @@ def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_lis
     l_sender = fromPickle(sender)
     #print(len(l_cc), len(l_to), len(l_sender))
 
-    s_to_r = np.zeros((len(unique_names),len(unique_names)), dtype='int') 
+    s_to_r = np.zeros((len(unique_names),len(unique_names)), dtype='int')
 
     for i, s in enumerate(l_sender):
         try:
@@ -493,10 +493,10 @@ def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_lis
 
 #----------------------------------------------------------------------
 def addTimeframes(df):
+    df['year']    = df['Sent'].dt.year
+    df['month']   = df['Sent'].dt.month
     df['week']    = df['Sent'].dt.week
     df['weekday'] = df['Sent'].dt.weekday
-    df['month']   = df['Sent'].dt.month
-    df['year']    = df['Sent'].dt.year
     df['hour']    = df['Sent'].dt.hour
     return df
 #----------------------------------------------------------------------
