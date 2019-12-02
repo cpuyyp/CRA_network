@@ -9,24 +9,81 @@ import pickle
 from IPython import embed
 from function_library import *
 
-def createSenderMatrix(l_sent, l_from, unique_senders, name2id, save=True):
-    df_Sent = pd.DataFrame(data=l_sent,columns = ['Sent'])
-    sender_by_year = np.zeros((len(unique_senders),6))
-    for year in range(2012,2018):
-        index1 = df_Sent> datetime( year, 1, 1, 0, 0, 0)
-        index2 = df_Sent< datetime( year+1, 1, 1, 0, 0, 0)
-        index = (index1&index2).values.flatten().tolist()
-        l_from_sliced = np.array(l_from)[index].tolist()
-        # cannot directly use restrictEmailsToYears function because it's not returning the index
-        col = year-2012
-        for sender in l_from_sliced:
-            row = name2id[sender[2]]
-            sender_by_year[row,col] += 1
+#----------------------------------------------------------------------
+def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
+    # l_people can be l_to, l_cc, l_sent
+    # l_time can be l_year, l_month, l_week, l_weekday, l_hour
+    # start and end should be in appropriate range,
+    # e.g. if use l_year, start and end are in range [2012,2018]
+    # save_to_file is the name of csv that you want, if it's None, not saving
 
-    sender_by_year_temp = sender_by_year.T.tolist()
-    sender_by_year_temp.insert(0,unique_senders)
-    sender_by_year_temp = list(map(list, zip(*sender_by_year_temp)))
-    df_sender_by_year = pd.DataFrame(data = sender_by_year_temp, columns=['Senders',2012,2013,2014,2015,2016,2017])
-    if save == True:
-        df_sender_by_year.to_csv('sender_by_year.csv')
-    return df_sender_by_year
+    # if the list of people is not a unique person, e.g. l_to and l_cc
+    if type(l_people[0]) == list:
+        unique_people = set()
+        for i in range(len(l_people)):
+            for lst in l_people[i]:
+                unique_people.add(lst[2])
+        unique_people = list(unique_people)
+        unique_people.sort()
+    # otherwise, the list of people must be l_from
+    else:
+        unique_people = list(uniqueEmails(l_people))
+        unique_people.sort()
+
+    # initialize matrix and variables
+    name2id, id2name = nameToIndexDict(unique_people)
+    num_timeslice = end - start - 1
+    people_by_time = np.zeros((len(unique_people),6))
+    # use dataframe because it's easier for get index
+    df_time = pd.DataFrame(data=l_time,columns = ['Sent'])
+
+    # iterate through all the columns
+    for time_point in range(start,end):
+        # pick out rows that satisfy the condition
+        index = (df_time == time_point).values.flatten()
+        l_people_sliced = np.array(l_people)[index].tolist()
+        col = time_point-start
+        for people in l_people_sliced:
+            # if the list of people is l_from
+            if type(people[0]) == str:
+                row = name2id[people[2]]
+                people_by_time[row,col] += 1
+            # otherwise, it is l_to or l_cc
+            else:
+                for person in people:
+                    row = name2id[person[2]]
+                    people_by_time[row,col] += 1
+
+
+    # insert people's names to the first column
+    people_by_time_temp = people_by_time.T.tolist()
+    people_by_time_temp.insert(0,unique_people)
+    people_by_time_temp = list(map(list, zip(*people_by_time_temp)))
+    columns = ['people'] + np.arange(start,end).tolist()
+    df_people_by_time= pd.DataFrame(data = people_by_time_temp, columns=columns)
+    if save_to_file != None:
+        df_people_by_time.to_csv(save_to_file+'.csv')
+    return df_people_by_time
+
+#----------------------------------------------------------------------
+def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', remove_blank = True, save_to_file=None):
+    if remove_blank == True:
+        index = df_people_by_time.index[df_people_by_time['people'] == '']
+        df_people_by_time = df_people_by_time.drop(index)
+        df_people_by_time = df_people_by_time.reset_index(drop=True)
+    if sortby == 'total':
+        df_people_by_time['sum'] = df_people_by_time.sum(axis=1)
+        df_people_by_time = df_people_by_time.sort_values(ascending=False, by='sum')
+        df_people_by_time = df_people_by_time.reset_index(drop=True)
+#         df_people_by_time = df_people_by_time.drop(['sum'],axis=1)
+    else:
+        df_people_by_time = df_people_by_time.sort_values(ascending=False, by=time)
+        df_people_by_time = df_people_by_time.reset_index(drop=True)
+
+    emails_sent = df_people_by_time[time].values[:top]
+    plt.figure(figsize=(10,6))
+    plt.bar(np.arange(top),height = emails_sent)
+    plt.ylim(0,emails_sent.max()+20)
+    plt.xticks(np.arange(top),df_people_by_time['people'].values[:top],rotation=90)
+    if save_to_file!=None:
+        plt.savefig(save_to_file+'.pdf')
