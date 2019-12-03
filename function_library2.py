@@ -18,7 +18,6 @@ def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
     # e.g. if use l_year, start and end are in range [2012,2018]
     # save_to_file is the name of csv that you want, if it's None, not saving
 
-    writeList("l_people.out", l_people); embed()
     # if the list of people is not a unique person, e.g. l_to and l_cc
     if type(l_people[0]) == list:
         unique_people = set()
@@ -78,7 +77,8 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
     # time should be a valid timepoint in the right range
     # top shows top n people
     # the order is controled by sortby.
-    # If sortby == 'total', then it is using the total number of emails in all time,
+    # If sortby 
+    #    'total',  the total number of emails in all years
     # else use the selected column
     # show_label can show first name or last name or entire name or email or triplet
     # remove_blank will remove the empty triplet ('', '', '')
@@ -126,11 +126,16 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
 
 #----------------------------------------------------------------------
 def standardize_triplet(l ,to_type=tuple):
-    if type(l[0][0]) == str:
-        for i in range(len(l)):
-            l[i] = to_type(l[i])
-    else:
-        for i in range(len(l)):
-            for j in range(len(l[i])):
-                l[i][j] = to_type(l[i][j])
+    try:
+        if type(l[0][0]) == str:
+            for i in range(len(l)):
+                l[i] = to_type(l[i])
+        else:
+            for i in range(len(l)):
+                for j in range(len(l[i])):
+                    l[i][j] = to_type(l[i][j])
+    except:
+        pass
+
     return l
+#----------------------------------------------------------------------
