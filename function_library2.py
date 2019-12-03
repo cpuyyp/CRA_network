@@ -22,18 +22,21 @@ def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
         unique_people = set()
         for i in range(len(l_people)):
             for lst in l_people[i]:
-                unique_people.add(lst[2])
+                unique_people.add(lst)
         unique_people = list(unique_people)
         unique_people.sort()
     # otherwise, the list of people must be l_from
     else:
-        unique_people = list(uniqueEmails(l_people))
+        unique_people = set()
+        for i in range(len(l_people)):
+            unique_people.add(l_people[i])
+        unique_people = list(unique_people)
         unique_people.sort()
 
     # initialize matrix and variables
     name2id, id2name = nameToIndexDict(unique_people)
-    num_timeslice = end - start - 1
-    people_by_time = np.zeros((len(unique_people),6))
+    num_timeslice = end - start
+    people_by_time = np.zeros((len(unique_people), num_timeslice))
     # use dataframe because it's easier for get index
     df_time = pd.DataFrame(data=l_time,columns = ['Sent'])
 
@@ -42,16 +45,17 @@ def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
         # pick out rows that satisfy the condition
         index = (df_time == time_point).values.flatten()
         l_people_sliced = np.array(l_people)[index].tolist()
+        l_people_sliced = standardize_triplet(l_people_sliced)
         col = time_point-start
         for people in l_people_sliced:
             # if the list of people is l_from
             if type(people[0]) == str:
-                row = name2id[people[2]]
+                row = name2id[people]
                 people_by_time[row,col] += 1
             # otherwise, it is l_to or l_cc
             else:
                 for person in people:
-                    row = name2id[person[2]]
+                    row = name2id[person]
                     people_by_time[row,col] += 1
 
 
@@ -65,10 +69,20 @@ def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
         df_people_by_time.to_csv(save_to_file+'.csv')
     return df_people_by_time
 
+
 #----------------------------------------------------------------------
-def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', remove_blank = True, save_to_file=None):
+def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', show_label = 'first', remove_blank = True, save_to_file=None):
+    # df_people_by_time is got from the createPeopleMatrix function
+    # time should be a valid timepoint in the right range
+    # top shows top n people
+    # the order is controled by sortby.
+    # If sortby == 'total', then it is using the total number of emails in all time,
+    # else use the selected column
+    # show_label can show first name or last name or entire name or email or triplet
+    # remove_blank will remove the empty triplet ('', '', '')
+
     if remove_blank == True:
-        index = df_people_by_time.index[df_people_by_time['people'] == '']
+        index = df_people_by_time.index[df_people_by_time['people'] == ('', '', '')]
         df_people_by_time = df_people_by_time.drop(index)
         df_people_by_time = df_people_by_time.reset_index(drop=True)
     if sortby == 'total':
@@ -81,9 +95,39 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', r
         df_people_by_time = df_people_by_time.reset_index(drop=True)
 
     emails_sent = df_people_by_time[time].values[:top]
-    plt.figure(figsize=(10,6))
     plt.bar(np.arange(top),height = emails_sent)
     plt.ylim(0,emails_sent.max()+20)
-    plt.xticks(np.arange(top),df_people_by_time['people'].values[:top],rotation=90)
+
+    # choose different labels
+    if show_label == 'first':
+        label = []
+        for i in range(top):
+            label.append(df_people_by_time['people'].values[:top][i][0])
+    elif show_label == 'last':
+        label = []
+        for i in range(top):
+            label.append(df_people_by_time['people'].values[:top][i][1])
+    elif show_label == 'email':
+        label = []
+        for i in range(top):
+            label.append(df_people_by_time['people'].values[:top][i][2])
+    elif show_label == 'name':
+        label = []
+        for i in range(top):
+            label.append(df_people_by_time['people'].values[:top][i][:2])
+    else:
+        label = df_people_by_time['people'].values[:top]
+    plt.xticks(np.arange(top),label,rotation=90)
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
+
+#----------------------------------------------------------------------
+def standardize_triplet(l ,to_type=tuple):
+    if type(l[0][0]) == str:
+        for i in range(len(l)):
+            l[i] = to_type(l[i])
+    else:
+        for i in range(len(l)):
+            for j in range(len(l[i])):
+                l[i][j] = to_type(l[i][j])
+    return l
