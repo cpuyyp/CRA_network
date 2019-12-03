@@ -321,6 +321,12 @@ def writeDict(file_name, dic):
     for k,v in dic.items():
         print(k, v, file=fd)
     fd.close()
+#----------------------------------------------------------------------
+def writeList(file_name, lst):
+    fd = open(file_name, "w")
+    for k in lst:
+        print(k, file=fd)
+    fd.close()
 #---------------------------------------------------------------------
 def writeDataSeries(file_name, ds):
     fd = open(file_name, "w")

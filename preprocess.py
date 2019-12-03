@@ -41,7 +41,7 @@ df = readDataFrame("output4.csv", "output_reduced.csv")
 
 df = restrictEmailsToYears(df, low=2012, high=2018)
 df = addTimeframes(df)
-embed()
+#embed()
 
 # convert pandas df to dictionary, only keep sender/recipient names and sent time
 email_dic = {}

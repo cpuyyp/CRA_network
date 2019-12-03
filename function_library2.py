@@ -11,12 +11,14 @@ from function_library import *
 
 #----------------------------------------------------------------------
 def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
+    # l_people is a list of triplets or a list of list triplets
     # l_people can be l_to, l_cc, l_sent
     # l_time can be l_year, l_month, l_week, l_weekday, l_hour
     # start and end should be in appropriate range,
     # e.g. if use l_year, start and end are in range [2012,2018]
     # save_to_file is the name of csv that you want, if it's None, not saving
 
+    writeList("l_people.out", l_people); embed()
     # if the list of people is not a unique person, e.g. l_to and l_cc
     if type(l_people[0]) == list:
         unique_people = set()
@@ -67,6 +69,8 @@ def createPeopleMatrix(l_people, l_time, start, end, save_to_file=None):
 
 #----------------------------------------------------------------------
 def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', remove_blank = True, save_to_file=None):
+    plt.subplots(1,1)
+    plt.subplot(1,1,1)
     if remove_blank == True:
         index = df_people_by_time.index[df_people_by_time['people'] == '']
         df_people_by_time = df_people_by_time.drop(index)
@@ -85,5 +89,6 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', r
     plt.bar(np.arange(top),height = emails_sent)
     plt.ylim(0,emails_sent.max()+20)
     plt.xticks(np.arange(top),df_people_by_time['people'].values[:top],rotation=90)
+    plt.tight_layout()
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
