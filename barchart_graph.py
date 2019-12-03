@@ -31,5 +31,5 @@ for year in range(2012,2018):
     plt.subplot(2,3,year-2011)
     plt.gca().set_title('Year {}'.format(year))
     plot_barchart_by_time(df_people_by_time, year, top = 20, sortby = 'total', show_label = 'name', remove_blank = True)
-    plt.tight_layout()
-plt.savefig('barplot.pdf')
+plt.tight_layout()
+plt.savefig('barplot.pdf', bbox_inches='tight')
