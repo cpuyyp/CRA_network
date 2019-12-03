@@ -77,7 +77,7 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
     # time should be a valid timepoint in the right range
     # top shows top n people
     # the order is controled by sortby.
-    # If sortby 
+    # If sortby
     #    'total',  the total number of emails in all years
     # else use the selected column
     # show_label can show first name or last name or entire name or email or triplet
@@ -139,3 +139,50 @@ def standardize_triplet(l ,to_type=tuple):
 
     return l
 #----------------------------------------------------------------------
+
+def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby = 'total', show_label = 'first', remove_blank = True, save_to_file=None):
+    df = df_people_by_time.copy()
+    if remove_blank == True:
+        index = df.index[df['people'] == ('', '', '')]
+        df = df.drop(index)
+        df = df.reset_index(drop=True)
+    if sortby == 'total':
+        df['sum'] = df.sum(axis=1)
+        df = df.sort_values(ascending=False, by='sum')
+        df = df.reset_index(drop=True)
+#         df = df.drop(['sum'],axis=1)
+    cols = df.columns
+    if normalize == True:
+        for col in cols[1:-1]:
+            df[col] = df[col]/df['sum']
+
+    bottom = 0
+    for col in cols[1:-1]:
+        emails_sent = df[col].values[:top]
+        plt.bar(np.arange(top), height = emails_sent, bottom = bottom, alpha=0.8,label = 'emails in '+str(col))
+        bottom = bottom + emails_sent
+
+    # choose different labels
+    if show_label == 'first':
+        label = []
+        for i in range(top):
+            label.append(df['people'].values[:top][i][0])
+    elif show_label == 'last':
+        label = []
+        for i in range(top):
+            label.append(df['people'].values[:top][i][1])
+    elif show_label == 'email':
+        label = []
+        for i in range(top):
+            label.append(df['people'].values[:top][i][2])
+    elif show_label == 'name':
+        label = []
+        for i in range(top):
+            label.append(df['people'].values[:top][i][:2])
+    else:
+        label = df['people'].values[:top]
+    plt.xticks(np.arange(top),label,rotation=90)
+    plt.legend()
+    plt.ylim(0,1.1*bottom.max())
+    if save_to_file!=None:
+        plt.savefig(save_to_file+'.pdf')
