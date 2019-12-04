@@ -116,7 +116,9 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
     elif show_label == 'name':
         label = []
         for i in range(top):
-            label.append(df_people_by_time['people'].values[:top][i][:2])
+            first_name= df_people_by_time['people'].values[:top][i][0]
+            last_name= df_people_by_time['people'].values[:top][i][1]
+            label.append(first_name + ' '+ last_name)
     else:
         label = df_people_by_time['people'].values[:top]
     plt.xticks(np.arange(top),label,rotation=90)
@@ -177,7 +179,9 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
     elif show_label == 'name':
         label = []
         for i in range(top):
-            label.append(df['people'].values[:top][i][:2])
+            first_name= df['people'].values[:top][i][0]
+            last_name= df['people'].values[:top][i][1]
+            label.append(first_name + ' '+ last_name)
     else:
         label = df['people'].values[:top]
     plt.xticks(np.arange(top),label,rotation=90)
@@ -221,8 +225,12 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
             ylabel.append(y_triplet[:top][i][2])
     elif show_label == 'name':
         for i in range(top):
-            xlabel.append(x_triplet[:top][i][:2])
-            ylabel.append(y_triplet[:top][i][:2])
+            first_name = x_triplet[:top][i][0]
+            last_name = x_triplet[:top][i][1]
+            xlabel.append(first_name + ' '+ last_name)
+            first_name = y_triplet[:top][i][0]
+            last_name = y_triplet[:top][i][1]
+            ylabel.append(first_name + ' '+ last_name)
     else:
         xlabel = x_triplet[:top]
         ylabel = y_triplet[:top]
@@ -232,6 +240,11 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
     plt.yticks(np.arange(top), ylabel)
     plt.gca().xaxis.set_ticks_position('top')
     plt.imshow(s_to_r[:top,:top],cmap = 'plasma')
-    plt.colorbar()
+    plt.xlabel('recipients',fontsize = 16)
+    plt.ylabel('senders',fontsize = 16)
+    plt.gca().xaxis.set_label_coords(0.5, 1.2)
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('# of emails from sender to recipient', rotation=90, fontsize=16)
+
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')

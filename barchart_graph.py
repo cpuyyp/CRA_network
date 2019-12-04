@@ -43,13 +43,13 @@ for time in range(start_time,end_time):
     #plt.subplot(2,3,year-2011)
     plt.subplot(nrows,ncols,time-start_time+1)
     plt.gca().set_title('Time {}'.format(time))
-    plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = 'total', show_label = 'last', remove_blank = True)
+    plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = 'total', show_label = 'name', remove_blank = True)
 plt.tight_layout()
 plt.savefig('barplot.pdf', bbox_inches='tight')
 
 # generating stacked bar chart
 plt.figure(figsize=(12,10))
-plot_stacked_barchart(df_people_by_time, top = nb_top, normalize = False, sortby = 'total', show_label = 'first', remove_blank = True, save_to_file='stacked_barplot')
+plot_stacked_barchart(df_people_by_time, top = nb_top, normalize = False, sortby = 'total', show_label = 'name', remove_blank = True, save_to_file='stacked_barplot')
 
 # plotting connection matrix
 unique_people = set()
@@ -67,4 +67,4 @@ unique_people = list(unique_people)
 unique_people.sort()
 name2id, id2name = nameToIndexDict(unique_people)
 s_to_r = createConnectionMatrix(unique_people, name2id, l_from=l_from, l_to=l_to, l_cc=l_cc)
-plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='last', remove_blank = True, save_to_file='connection_matrix')
+plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='name', remove_blank = True, save_to_file='connection_matrix')
