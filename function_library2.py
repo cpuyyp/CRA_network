@@ -136,10 +136,9 @@ def standardize_triplet(l ,to_type=tuple):
                     l[i][j] = to_type(l[i][j])
     except:
         pass
-
     return l
-#----------------------------------------------------------------------
 
+#----------------------------------------------------------------------
 def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby = 'total', show_label = 'first', remove_blank = True, save_to_file=None):
     df = df_people_by_time.copy()
     if remove_blank == True:
@@ -184,5 +183,55 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
     plt.xticks(np.arange(top),label,rotation=90)
     plt.legend()
     plt.ylim(0,1.1*bottom.max())
+    if save_to_file!=None:
+        plt.savefig(save_to_file+'.pdf')
+
+#----------------------------------------------------------------------
+def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', remove_blank = True, save_to_file=None):
+    row_sum = s_to_r.sum(axis = 1)
+    col_sum = s_to_r.sum(axis = 0)
+    row_ind = np.argsort(row_sum)[::-1]
+    col_ind = np.argsort(col_sum)[::-1]
+    s_to_r = s_to_r[row_ind,:]
+    s_to_r = s_to_r[:,col_ind]
+
+    y_triplet = np.array(unique_people)[row_ind]
+    x_triplet = np.array(unique_people)[col_ind]
+    if remove_blank == True:
+        x_index = np.where(x_triplet == ['', '', ''])[0][0]
+        y_index = np.where(y_triplet == ['', '', ''])[0][0]
+        x_triplet = np.delete(x_triplet, x_index, axis=0)
+        y_triplet = np.delete(y_triplet, y_index, axis=0)
+        s_to_r = np.delete(s_to_r, x_index, axis=1)
+        s_to_r = np.delete(s_to_r, y_index, axis=0)
+
+    xlabel = []
+    ylabel = []
+    if show_label == 'first':
+        for i in range(top):
+            xlabel.append(x_triplet[:top][i][0])
+            ylabel.append(y_triplet[:top][i][0])
+    elif show_label == 'last':
+        for i in range(top):
+            xlabel.append(x_triplet[:top][i][1])
+            ylabel.append(y_triplet[:top][i][1])
+    elif show_label == 'email':
+        for i in range(top):
+            xlabel.append(x_triplet[:top][i][2])
+            ylabel.append(y_triplet[:top][i][2])
+    elif show_label == 'name':
+        for i in range(top):
+            xlabel.append(x_triplet[:top][i][:2])
+            ylabel.append(y_triplet[:top][i][:2])
+    else:
+        xlabel = x_triplet[:top]
+        ylabel = y_triplet[:top]
+
+    plt.figure(figsize=(12,10))
+    plt.xticks(np.arange(top), xlabel, rotation=90)
+    plt.yticks(np.arange(top), ylabel)
+    plt.gca().xaxis.set_ticks_position('top')
+    plt.imshow(s_to_r[:top,:top],cmap = 'plasma')
+    plt.colorbar()
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')

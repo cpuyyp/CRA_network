@@ -50,3 +50,21 @@ plt.savefig('barplot.pdf', bbox_inches='tight')
 # generating stacked bar chart
 plt.figure(figsize=(12,10))
 plot_stacked_barchart(df_people_by_time, top = nb_top, normalize = False, sortby = 'total', show_label = 'first', remove_blank = True, save_to_file='stacked_barplot')
+
+# plotting connection matrix
+unique_people = set()
+for i in range(len(l_from)):
+    unique_people.add(l_from[i])
+
+for i in range(len(l_cc)):
+    for lst in l_cc[i]:
+        unique_people.add(lst)
+
+for i in range(len(l_to)):
+    for lst in l_to[i]:
+        unique_people.add(lst)
+unique_people = list(unique_people)
+unique_people.sort()
+name2id, id2name = nameToIndexDict(unique_people)
+s_to_r = createConnectionMatrix(unique_people, name2id, l_from=l_from, l_to=l_to, l_cc=l_cc)
+plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='last', remove_blank = True, save_to_file='connection_matrix')

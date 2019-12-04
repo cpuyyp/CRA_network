@@ -469,32 +469,25 @@ def sendReceiveList(l_from, l_to, l_cc, max_rec, max_to):
     return d_pairs
 
 #----------------------------------------------------------------------
-def createConnectionMatrix(unique_names, name2id, sender="from_list", to="to_list", cc="cc_list"):
-    l_cc = fromPickle(cc)
-    l_to = fromPickle(to)
-    l_sender = fromPickle(sender)
-    #print(len(l_cc), len(l_to), len(l_sender))
-
+def createConnectionMatrix(unique_names, name2id, l_from, l_to, l_cc):
     s_to_r = np.zeros((len(unique_names),len(unique_names)), dtype='int')
-
-    for i, s in enumerate(l_sender):
+    for i, s in enumerate(l_from):
         try:
-            sx = name2id[s[2]]   # x means integer index
+            sx = name2id[s]   # x means integer index
         except:
             continue
         for r in l_cc[i]:
             try:
-                rx = name2id[r[2]]
+                rx = name2id[r]
                 s_to_r[sx, rx] += 1
             except:
                 pass
         for t in l_to[i]:
             try:
-                tx = name2id[t[2]]
+                tx = name2id[t]
                 s_to_r[sx, tx] += 1
             except:
                 pass
-
     return s_to_r
 
 #----------------------------------------------------------------------
