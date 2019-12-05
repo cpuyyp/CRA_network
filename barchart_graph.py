@@ -68,3 +68,19 @@ unique_people.sort()
 name2id, id2name = nameToIndexDict(unique_people)
 s_to_r = createConnectionMatrix(unique_people, name2id, l_from=l_from, l_to=l_to, l_cc=l_cc)
 plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='name', remove_blank = True, save_to_file='connection_matrix')
+
+
+# select a specific year and get monthly plot
+ind = np.array(l_year) == 2013
+l_from_selected = np.array(l_from)[ind].tolist()
+l_month_selected = np.array(l_month)[ind].tolist()
+l_from_selected = standardize_triplet(l_from_selected)
+df_people_by_time = createPeopleMatrix(l_from_selected, l_month_selected, 1, 13)
+plt.subplots(4,3,figsize=(10,12))
+plt.suptitle('# email sent by the top 20 people in 2013 per year',y=1.02,fontsize = 20)
+for time in range(1,13):
+    plt.subplot(4,3,time)
+    plt.gca().set_title('Month {} in 2014'.format(time))
+    plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', show_label = 'name', remove_blank = True)
+plt.tight_layout()
+plt.savefig('barplot_monthly.pdf', bbox_inches='tight')
