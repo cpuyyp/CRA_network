@@ -29,29 +29,68 @@ end_time = 2018
 df_people_by_time = createPeopleMatrix(l_from, l_year, start_time, end_time)
 # df_people_by_time = createPeopleMatrix(l_from, l_month, 0, 12)
 
+nb_top = 25
+plt.rcParams.update({'font.size':12})
+
+# plot barplot 1
 nrows = 2
 ncols = 3
-#plt.subplots(2,3,figsize=(12,10))
-plt.subplots(nrows,ncols,figsize=(12,10))
-
-nb_top = 50
-plt.rcParams.update({'font.size':6})
-plt.suptitle('#Emails sent by top %d'%nb_top, y=1.02, fontsize = 20)
-
+plt.subplots(nrows,ncols,figsize=(12,8))
+plt.suptitle('#Emails sent by top %d people'%nb_top, y=1.02, fontsize = 20)
 for time in range(start_time,end_time):
-# for year in range(0,12):
-    #plt.subplot(2,3,year-2011)
     plt.subplot(nrows,ncols,time-start_time+1)
-    plt.gca().set_title('Time {}'.format(time))
+    plt.gca().set_title('Year {}'.format(time))
     plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = 'total', show_label = 'name', remove_blank = True)
 plt.tight_layout()
 plt.savefig('barplot.pdf', bbox_inches='tight')
 plt.savefig('barplot.png', bbox_inches='tight')
 
+# plot barplot 2
+l_people = [ [a]+b+c for a,b,c in zip(l_from,l_to,l_cc)]
+df_people_by_time = createPeopleMatrix(l_people, l_year, start_time, end_time)
+plt.subplots(nrows,ncols,figsize=(12,8))
+plt.suptitle('#Emails involved by top %d people'%nb_top, y=1.02, fontsize = 20)
+for time in range(start_time,end_time):
+    plt.subplot(nrows,ncols,time-start_time+1)
+    plt.gca().set_title('Year {}'.format(time))
+    plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = True, show_label = 'name', remove_blank = True)
+plt.tight_layout()
+plt.savefig('barplot2.pdf', bbox_inches='tight')
+plt.savefig('barplot2.png', bbox_inches='tight')
 
-# generating stacked bar chart
-plt.figure(figsize=(12,10))
+# plot barplot 3
+start_time = 1
+end_time = 13
+df_people_by_time = createPeopleMatrix(l_from, l_month, start_time, end_time)
+nrows = 4
+ncols = 3
+plt.subplots(nrows,ncols,figsize=(12,16))
+plt.suptitle('#Emails sent in each month by top %d people'%nb_top, y=1.02, fontsize = 20)
+for time in range(start_time,end_time):
+    plt.subplot(nrows,ncols,time-start_time+1)
+    plt.gca().set_title('Month {}'.format(time))
+    plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = 'total', show_label = 'name', remove_blank = True)
+plt.tight_layout()
+plt.savefig('barplot3.pdf', bbox_inches='tight')
+plt.savefig('barplot3.png', bbox_inches='tight')
+
+# generating stacked bar chart 1
+nb_top = 50
+start_time = 2012
+end_time = 2018
+df_people_by_time = createPeopleMatrix(l_from, l_year, start_time, end_time)
+plt.figure(figsize=(10,6))
+plt.title('#Emails sent in total by top %d people'%nb_top, y=1.02, fontsize = 20)
 plot_stacked_barchart(df_people_by_time, top = nb_top, normalize = False, sortby = 'total', show_label = 'name', remove_blank = True, save_to_file='stacked_barplot')
+
+# generating stacked bar chart 2
+nb_top = 20
+start_time = 0
+end_time = 6
+df_people_by_time = createPeopleMatrix(l_from, l_hour, start_time, end_time)
+plt.figure(figsize=(6,5))
+plt.title('#Emails sent at midnight by top %d people'%nb_top, y=1.02, fontsize = 20)
+plot_stacked_barchart(df_people_by_time, top = nb_top, normalize = False, sortby = 'total', show_label = 'name', remove_blank = True, save_to_file='stacked_barplot2')
 
 # plotting connection matrix
 unique_people = set()

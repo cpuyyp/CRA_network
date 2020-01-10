@@ -186,6 +186,7 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
     else:
         label = df['people'].values[:top]
     plt.xticks(np.arange(top),label,rotation=90)
+    plt.tight_layout()
     plt.legend()
     plt.ylim(0,1.1*bottom.max())
     if save_to_file!=None:
@@ -238,6 +239,7 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
         ylabel = y_triplet[:top]
 
     plt.figure(figsize=(12,10))
+    plt.tight_layout()
     plt.xticks(np.arange(top), xlabel, rotation=90)
     plt.yticks(np.arange(top), ylabel)
     plt.gca().xaxis.set_ticks_position('top')

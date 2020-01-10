@@ -1,6 +1,6 @@
 # 2019-11-30
 # Author: Joey Jingze and Gordon Erlebacher
-# GE: refactor code to prepare for more general usage. 
+# GE: refactor code to prepare for more general usage.
 #   Add functions, and eventually make it class-based
 
 import networkx as nx
@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 from IPython import embed
 from function_library import *
+from function_library2 import *
+
 
 #def dictFreq(in_dict):
 
@@ -24,21 +26,33 @@ l_to   = fromPickle("to_list")
 l_from = fromPickle("from_list")
 l_cc   = fromPickle("cc_list")
 
-l_emails = []
-for k,v in d_final.items():
-   l_emails.append(v[2])
-assert(len(l_emails) == len(d_final))
+l_to = standardize_triplet(l_to)
+l_from = standardize_triplet(l_from)
+l_cc = standardize_triplet(l_cc)
 
-d_pairs = sendReceiveList(l_from, l_to, l_cc, 40, 40)
+unique_people = set()
+for i in range(len(l_from)):
+    unique_people.add(l_from[i])
+
+for i in range(len(l_cc)):
+    for lst in l_cc[i]:
+        unique_people.add(lst)
+
+for i in range(len(l_to)):
+    for lst in l_to[i]:
+        unique_people.add(lst)
+unique_people = list(unique_people)
+unique_people.sort()
+name2id, id2name = nameToIndexDict(unique_people)
+
+# s2r is Sender to(2) recipient
+
+s2r = createConnectionMatrix(unique_people, name2id, l_from=l_from, l_to=l_to, l_cc=l_cc)
 
 #----------------------------------------------------------------------
-unique_names = l_emails  # could be a list of names for different effects 
-name2id, id2name = nameToIndexDict(l_emails)
-# s2r is Sender to(2) recipient
-s2r = createConnectionMatrix(unique_names, name2id)
-nb_mails = np.sum(s2r)  
+nb_mails = np.sum(s2r)
 print("nb mails= ", nb_mails)
-embed(); 
+# embed();
 
 #----------------------------------------------------------------------
 
@@ -47,18 +61,18 @@ G = nx.Graph()
 edge_width = []
 node_weight_sender = np.sum(s2r, axis = 1)
 node_weight_recipient = np.sum(s2r,axis = 0)
-node_weight_total = node_weight_sender + node_weight_recipient 
+node_weight_total = node_weight_sender + node_weight_recipient
 
 #nb_recipient = np.array(send_to_recipient.shape[0])
- 
-# node_weight is the size of node 
-# the node weight has to be in a specific order(in the order of time when the node first added to the graph), 
+
+# node_weight is the size of node
+# the node weight has to be in a specific order(in the order of time when the node first added to the graph),
 # cannot just use node_weight_total
-node_weight = [] 
+node_weight = []
 for i in range(s2r.shape[0]):
     for j in range(i,s2r.shape[0]):
         # if there is more than 1 email between these 2 people, add node if haven't add. Add edge.
-        if s2r[i,j] + s2r[j,i] > 1:
+        if s2r[i,j] + s2r[j,i] > 20:
             if id2name[i] not in G.nodes():
                 G.add_node(id2name[i])
                 node_weight.append(node_weight_total[i])
@@ -74,12 +88,12 @@ print('done adding edges and nodes')
 # find who should be labeled
 node_have_label = {}
 for i in range(s2r.shape[0]):
-    if node_weight_total[i]>250 and id2name[i] in G.nodes():
-        node_have_label[id2name[i]] = id2name[i]
+    if node_weight_total[i]>500 and id2name[i] in G.nodes():
+        node_have_label[id2name[i]] = id2name[i][0]+' '+id2name[i][1]
 
 # edge_width is actrually edge strength. Bigger strength will lead to shorter distance
 # edge_width = np.sqrt(np.array(edge_width))
-edge_width = 0.2*(np.array(edge_width))
+edge_width = 0.1*(np.array(edge_width))
 print('done adding labels')
 
 plt.figure(figsize=(40,40))
@@ -88,11 +102,10 @@ pos = nx.spring_layout(G,iterations=30)
 print('done calculating position')
 
 nx.draw_networkx_nodes(G, pos, node_size= node_weight,node_color = 'black')
-#nx.draw_networkx_edges(G, pos, width= edge_width, edge_color = 'grey')
+nx.draw_networkx_edges(G, pos, width= edge_width, edge_color = 'grey')
 nx.draw_networkx_labels(G, pos, labels= node_have_label, font_size=24, font_color = 'red', font_family='sans-serif')
 
 plt.axis('off')
 #plt.show()
-plt.savefig("gordon.pdf")
-
-
+plt.savefig("network2.pdf")
+plt.savefig("network2.png")
