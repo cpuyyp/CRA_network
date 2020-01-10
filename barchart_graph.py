@@ -46,6 +46,8 @@ for time in range(start_time,end_time):
     plot_barchart_by_time(df_people_by_time, time, top = nb_top, sortby = 'total', show_label = 'name', remove_blank = True)
 plt.tight_layout()
 plt.savefig('barplot.pdf', bbox_inches='tight')
+plt.savefig('barplot.png', bbox_inches='tight')
+
 
 # generating stacked bar chart
 plt.figure(figsize=(12,10))
@@ -84,3 +86,4 @@ for time in range(1,13):
     plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', show_label = 'name', remove_blank = True)
 plt.tight_layout()
 plt.savefig('barplot_monthly.pdf', bbox_inches='tight')
+plt.savefig('barplot_monthly.png', bbox_inches='tight')

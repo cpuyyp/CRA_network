@@ -125,6 +125,7 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
 
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
+        plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
 def standardize_triplet(l ,to_type=tuple):
@@ -189,6 +190,7 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
     plt.ylim(0,1.1*bottom.max())
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
+        plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
 def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', remove_blank = True, save_to_file=None):
@@ -248,3 +250,4 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
 
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
+        plt.savefig(save_to_file+'.png')
