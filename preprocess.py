@@ -432,6 +432,9 @@ l_weekday = df['weekday'].tolist()
 toPickle(l_weekday, 'weekday_list')
 l_hour = df['hour'].tolist()
 toPickle(l_hour, 'hour_list')
+print(df.columns); embed()
+#l_dayofyear_list = 
+toPickle(l_dayofyear, 'dayofyear_list')
 # pickle these three lists
 
 #printList(to_list, "processed To")

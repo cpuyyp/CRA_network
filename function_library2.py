@@ -128,7 +128,10 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
         plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
-def standardize_triplet(l ,to_type=tuple):
+# GE: What does this function do? 
+# GE: The less loops you use, the faster the code
+# GE: describe the arguments. What is l? What type? What do subscripts mean? 
+def standardize_triplet(l, to_type=tuple):
     try:
         if type(l[0][0]) == str:
             for i in range(len(l)):

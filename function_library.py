@@ -492,11 +492,11 @@ def createConnectionMatrix(unique_names, name2id, l_from, l_to, l_cc):
 
 #----------------------------------------------------------------------
 def addTimeframes(df):
-    df['year']    = df['Sent'].dt.year
-    df['month']   = df['Sent'].dt.month
-    df['week']    = df['Sent'].dt.week
-    df['weekday'] = df['Sent'].dt.weekday
-    df['hour']    = df['Sent'].dt.hour
+    df['year']      = df['Sent'].dt.year
+    df['month']     = df['Sent'].dt.month
+    df['week']      = df['Sent'].dt.week
+    df['weekday']   = df['Sent'].dt.weekday
+    df['hour']      = df['Sent'].dt.hour
     return df
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
