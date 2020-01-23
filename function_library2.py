@@ -160,11 +160,12 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
     if normalize == True:
         for col in cols[1:-1]:
             df[col] = df[col]/df['sum']
-
+    if top == None:
+        top = df.values.shape[0]
     bottom = 0
     for col in cols[1:-1]:
         emails_sent = df[col].values[:top]
-        plt.bar(np.arange(top), height = emails_sent, bottom = bottom, alpha=0.8,label = 'emails in '+str(col))
+        plt.bar(np.arange(top), height = emails_sent, bottom = bottom, alpha=0.8,label = str(col)+'-'+str(col+1))
         bottom = bottom + emails_sent
 
     # choose different labels
@@ -186,9 +187,12 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
             first_name= df['people'].values[:top][i][0]
             last_name= df['people'].values[:top][i][1]
             label.append(first_name + ' '+ last_name)
+    elif show_label == None:
+        pass
     else:
         label = df['people'].values[:top]
-    plt.xticks(np.arange(top),label,rotation=90)
+    if show_label != None:
+        plt.xticks(np.arange(top),label,rotation=90)
     plt.tight_layout()
     plt.legend()
     plt.ylim(0,1.1*bottom.max())
