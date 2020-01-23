@@ -436,8 +436,6 @@ l_dayofyear = df['dayofyear'].tolist()
 toPickle(l_dayofyear, 'dayofyear_list')
 l_hour = df['hour'].tolist()
 toPickle(l_hour, 'hour_list')
-print(df.columns); embed()
-#l_dayofyear_list = 
 toPickle(l_dayofyear, 'dayofyear_list')
 # pickle these three lists
 
