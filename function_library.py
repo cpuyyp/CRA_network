@@ -496,6 +496,8 @@ def addTimeframes(df):
     df['month']   = df['Sent'].dt.month
     df['week']    = df['Sent'].dt.week
     df['weekday'] = df['Sent'].dt.weekday
+    df['day'] = df['Sent'].dt.day
+    df['dayofyear'] = df['Sent'].dt.dayofyear
     df['hour']    = df['Sent'].dt.hour
     return df
 #----------------------------------------------------------------------
