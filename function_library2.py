@@ -267,7 +267,7 @@ def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label
         plt.savefig(save_to_file+'.pdf')
         plt.savefig(save_to_file+'.png')
 
-def plot_network(s2r, directed = False, edge_threshold = 0, node_w = 'total', draw_labels = False, label_threshold = 0,iterations = 30, figsize=(40,40)):
+def plot_network(s2r, id2name, directed = False, edge_threshold = 0, node_w = 'total', draw_labels = False, label_threshold = 0,iterations = 30, figsize=(40,40)):
     if directed == False:
         G = nx.Graph()
     elif directed == True:

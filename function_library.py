@@ -477,11 +477,12 @@ def createConnectionMatrix(unique_names, name2id, l_from, l_to, l_cc):
         except:
             continue
         for r in l_cc[i]:
-            try:
-                rx = name2id[r]
-                s_to_r[sx, rx] += 1
-            except:
-                pass
+            if r != ['', '', ''] and r != ('', '', ''):
+                try:
+                    rx = name2id[r]
+                    s_to_r[sx, rx] += 1
+                except:
+                    pass
         for t in l_to[i]:
             try:
                 tx = name2id[t]
