@@ -128,9 +128,9 @@ def plot_barchart_by_time(df_people_by_time, time, top = 20, sortby = 'total', s
         plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
-# GE: What does this function do? 
+# GE: What does this function do?
 # GE: The less loops you use, the faster the code
-# GE: describe the arguments. What is l? What type? What do subscripts mean? 
+# GE: describe the arguments. What is l? What type? What do subscripts mean?
 def standardize_triplet(l, to_type=tuple):
     try:
         if type(l[0][0]) == str:
@@ -201,16 +201,20 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
         plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
-def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', remove_blank = True, save_to_file=None):
-    row_sum = s_to_r.sum(axis = 1)
-    col_sum = s_to_r.sum(axis = 0)
-    row_ind = np.argsort(row_sum)[::-1]
-    col_ind = np.argsort(col_sum)[::-1]
-    s_to_r = s_to_r[row_ind,:]
-    s_to_r = s_to_r[:,col_ind]
-
-    y_triplet = np.array(unique_people)[row_ind]
-    x_triplet = np.array(unique_people)[col_ind]
+def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label='first', figsize=(12,10), remove_blank = True, save_to_file=None):
+    s_to_r = s2r.copy()
+    if sort == True:
+        row_sum = s_to_r.sum(axis = 1)
+        col_sum = s_to_r.sum(axis = 0)
+        row_ind = np.argsort(row_sum)[::-1]
+        col_ind = np.argsort(col_sum)[::-1]
+        s_to_r = s_to_r[row_ind,:]
+        s_to_r = s_to_r[:,col_ind]
+        y_triplet = np.array(unique_people)[row_ind]
+        x_triplet = np.array(unique_people)[col_ind]
+    else:
+        y_triplet = np.array(unique_people)
+        x_triplet = np.array(unique_people)
     if remove_blank == True:
         x_index = np.where(x_triplet == ['', '', ''])[0][0]
         y_index = np.where(y_triplet == ['', '', ''])[0][0]
@@ -241,11 +245,13 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
             first_name = y_triplet[:top][i][0]
             last_name = y_triplet[:top][i][1]
             ylabel.append(first_name + ' '+ last_name)
+    elif show_label == False:
+        pass
     else:
         xlabel = x_triplet[:top]
         ylabel = y_triplet[:top]
 
-    plt.figure(figsize=(12,10))
+    plt.figure(figsize=figsize)
     plt.tight_layout()
     plt.xticks(np.arange(top), xlabel, rotation=90)
     plt.yticks(np.arange(top), ylabel)
@@ -260,3 +266,70 @@ def plot_connection_matrix(s_to_r,unique_people, top = 30, show_label='first', r
     if save_to_file!=None:
         plt.savefig(save_to_file+'.pdf')
         plt.savefig(save_to_file+'.png')
+
+def plot_network(s2r, directed = False, edge_threshold = 0, node_w = 'total', draw_labels = False, label_threshold = 0,iterations = 30, figsize=(40,40)):
+    if directed == False:
+        G = nx.Graph()
+    elif directed == True:
+        G = nx.DiGraph()
+    else:
+        print('directed keyword', directed, 'not defined')
+
+    edge_width = []
+    node_weight_sender = np.sum(s2r, axis = 1)
+    node_weight_recipient = np.sum(s2r,axis = 0)
+    node_weight_total = node_weight_sender + node_weight_recipient
+    node_weight = []
+    for i in range(s2r.shape[0]):
+        for j in range(i+1,s2r.shape[1]):
+            # if there is more than n email between these 2 people, add node if haven't add. Add edge.
+            if s2r[i,j] + s2r[j,i] > edge_threshold:
+                if id2name[i] not in G.nodes():
+                    G.add_node(id2name[i])
+                    if node_w == 'total':
+                        node_weight.append(node_weight_total[i])
+                    elif node_w == 'send':
+                        node_weight.append(node_weight_sender[i])
+                    elif node_w == 'receive':
+                        node_weight.append(node_weight_recipient[i])
+                    else:
+                        print('node_w keyword', node_w, 'not defined')
+                if id2name[j] not in G.nodes():
+                    G.add_node(id2name[j])
+                    if node_w == 'total':
+                        node_weight.append(node_weight_total[j])
+                    elif node_w == 'send':
+                        node_weight.append(node_weight_sender[j])
+                    elif node_w == 'receive':
+                        node_weight.append(node_weight_recipient[j])
+                    else:
+                        print('node_w keyword', node_w, 'not defined')
+                if directed == False:
+                    G.add_edge(id2name[i], id2name[j],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
+                elif directed == True:
+                    if s2r[i,j] > s2r[j,i]:
+                        G.add_edge(id2name[i], id2name[j],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
+                    else:
+                        G.add_edge(id2name[j], id2name[i],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
+                edge_width.append(s2r[i,j] + s2r[j,i])
+
+    edge_width = 0.1*(np.array(edge_width))
+    plt.figure(figsize=figsize)
+
+    pos = nx.spring_layout(G,iterations=iterations)
+
+    nx.draw_networkx_nodes(G, pos, node_size= node_weight,node_color = 'black')
+    nx.draw_networkx_edges(G, pos, width= edge_width, edge_color = 'grey')
+    if draw_labels == True:
+        node_have_label = {}
+        for i in range(s2r.shape[0]):
+            if node_weight_total[i]>label_threshold and id2name[i] in G.nodes():
+                if id2name[i][0]+' '+id2name[i][1] != ' ':
+                    node_have_label[id2name[i]] = id2name[i][0]+' '+id2name[i][1]
+                else:
+                    node_have_label[id2name[i]] = 'anonymous'
+
+        nx.draw_networkx_labels(G, pos, labels= node_have_label, font_size=20, font_color = 'red')
+
+    plt.axis('off')
+    plt.show()
