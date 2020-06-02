@@ -201,7 +201,7 @@ def plot_stacked_barchart(df_people_by_time, top = 20, normalize = True, sortby 
         plt.savefig(save_to_file+'.png')
 
 #----------------------------------------------------------------------
-def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label='first', figsize=(12,10), remove_blank = True, save_to_file=None):
+def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label='first', figsize=(12,10), title = None,remove_blank = True, save_to_file=None):
     s_to_r = s2r.copy()
     if sort == True:
         row_sum = s_to_r.sum(axis = 1)
@@ -252,6 +252,8 @@ def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label
         ylabel = y_triplet[:top]
 
     plt.figure(figsize=figsize)
+    if title != None:
+        plt.title(title)
     plt.tight_layout()
     plt.xticks(np.arange(top), xlabel, rotation=90)
     plt.yticks(np.arange(top), ylabel)
@@ -267,7 +269,7 @@ def plot_connection_matrix(s2r,unique_people, sort = False, top = 30, show_label
         plt.savefig(save_to_file+'.pdf')
         plt.savefig(save_to_file+'.png')
 
-def plot_network(s2r, id2name, directed = False, edge_threshold = 0, node_w = 'total', draw_labels = False, label_threshold = 0,iterations = 30, figsize=(40,40)):
+def plot_network(s2r, id2name, pos = None, directed = False, edge_threshold = 0, edge_w = None, node_w = 'total', draw_labels = False, label_threshold = 0,iterations = 30, figsize=(40,40),title = None):
     if directed == False:
         G = nx.Graph()
     elif directed == True:
@@ -306,17 +308,28 @@ def plot_network(s2r, id2name, directed = False, edge_threshold = 0, node_w = 't
                         print('node_w keyword', node_w, 'not defined')
                 if directed == False:
                     G.add_edge(id2name[i], id2name[j],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
+                    edge_width.append(s2r[i,j] + s2r[j,i])
                 elif directed == True:
                     if s2r[i,j] > s2r[j,i]:
                         G.add_edge(id2name[i], id2name[j],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
+                        if edge_w == 'info_flow': 
+                            edge_width.append(s2r[i,j] - s2r[j,i])
+                        else:
+                            edge_width.append(s2r[j,i] + s2r[i,j])
                     else:
                         G.add_edge(id2name[j], id2name[i],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
-                edge_width.append(s2r[i,j] + s2r[j,i])
+                        if edge_w == 'info_flow':
+                            edge_width.append(s2r[j,i] - s2r[i,j])
+                        else:
+                            edge_width.append(s2r[j,i] + s2r[i,j])
 
     edge_width = 0.1*(np.array(edge_width))
     plt.figure(figsize=figsize)
+    if title != None:
+        plt.title(title,fontsize = 28)
 
-    pos = nx.spring_layout(G,iterations=iterations)
+    if pos == None:
+        pos = nx.spring_layout(G,iterations=iterations)
 
     nx.draw_networkx_nodes(G, pos, node_size= node_weight,node_color = 'black')
     nx.draw_networkx_edges(G, pos, width= edge_width, edge_color = 'grey')
@@ -333,3 +346,4 @@ def plot_network(s2r, id2name, directed = False, edge_threshold = 0, node_w = 't
 
     plt.axis('off')
     plt.show()
+    return pos
