@@ -313,7 +313,7 @@ def plot_network(s2r, id2name, pos = None, directed = False, edge_threshold = 0,
                 elif directed == True:
                     if s2r[i,j] > s2r[j,i]:
                         G.add_edge(id2name[i], id2name[j],weight= 2/(s2r[i,j] + s2r[j,i] + 0.5*(node_weight_total[i]+ node_weight_total[j])))
-                        if edge_w == 'info_flow': 
+                        if edge_w == 'info_flow':
                             edge_width.append(s2r[i,j] - s2r[j,i])
                         else:
                             edge_width.append(s2r[j,i] + s2r[i,j])
@@ -348,7 +348,7 @@ def plot_network(s2r, id2name, pos = None, directed = False, edge_threshold = 0,
     plt.axis('off')
     plt.show()
     return pos
-    
+
 def createZoomableBarChart(df, X, Y, selection, title = '',zoom_encodings = ['x'], top = 100, figsize = (500, 200)):
     '''
     comments
@@ -364,19 +364,20 @@ def createZoomableBarChart(df, X, Y, selection, title = '',zoom_encodings = ['x'
     ).properties(
         width=figsize[0],
         height=figsize[1]*0.1
-    )   
-    
+    )
+
     zoomed = alt.Chart(df, title=title).mark_bar().transform_filter(
         selection
     ).transform_filter(
         brush
     ).encode(x=alt.X(X+':O', sort='-y'),
-        y=Y+':Q'
+        y=Y+':Q',
+        tooltip=[X, Y]
     ).properties(
         width=figsize[0],
         height=figsize[1]*0.9
     )
-    
+
     if top:
         base.transform_window(
             rank='rank('+Y+')',
@@ -390,8 +391,7 @@ def createZoomableBarChart(df, X, Y, selection, title = '',zoom_encodings = ['x'
         ).transform_filter(
             (alt.datum.rank < top)
         )
-        
+
     chart = zoomed & base
-    
+
     return chart
-    
