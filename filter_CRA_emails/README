@@ -1,0 +1,11 @@
+Dec. 17, 2021
+
+- output7_new_sentiment.csv
+CSV files with emails, with the following columns: 
+,From,Sent,To,CC,Subject,Attachments,Importance,Body,textblob_sentiment,nltk_sentiment,flair_sentiment,GCP_sentiment
+Note: sentiments are precomputed and can be used as metadata. That does not mean that sentiment is reliable. Sentiment
+was computed in three ways (NLTK, FLAIR< GCP). Ask Joey for interpretation. He should have this written up somewhere. 
+
+- filter.py
+I (Gordon) wrote this program to process the output7_new_sentiment file. The objective was to fix errors in the csv file. 
+Many emails have no subject, and the first line of the email is the subject by mistake. This is partially fixed in filter.py
