@@ -166,13 +166,13 @@ def process_dates_new(df):
         except:
             try:
                 new_date = datetime.strptime(
-                    dt, "%B %d %Y %I:%M:%S %p %Z"
+                    dt, "%B %d %Y %I:%M:%S %p %Z"  # 12 hrs
                 )
                 print("==> %I:%M:%S %p %Z, dt: ", dt)
             except:
                 try:
                     new_date = datetime.strptime(
-                        dt, "%B %d %Y %H:%M:%S %Z"
+                        dt, "%B %d %Y %H:%M:%S %Z"  # 24 hrs
                     )
                     print("==> %Z format, dt: ", dt)
                 except:

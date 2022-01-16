@@ -1,0 +1,25 @@
+2022-01-16
+Procedure to preprocess email headers and correct errors
+
+------------
+1) collect all lines with a colon (":") from all text files. 
+==> Result of collections shows the presence of the following headers: 
+From:
+To:
+CC:, Cc:
+Sent: or Date:
+Bcc:, BCC:
+Subject:
+   Sometimes subject includes RE:, CC:, Re:, FW:, Fwd:, sometimes multiples
+------------
+Some lines have FROM, BEGIN, etc. all capitalized. 
+These lines are preceded (perhaps always) with 
+Begin forwarded message:  (starts on 1st character of the line)
+------------
+Some lines are of the following type:  (sometimes with >, >>, or nothing on the first column. 
+> On Jan 9, 2014, at 5:43 PM, "David McDevitt" <mcdevittd@leoncountyfl.gov> wrote:
+
+Comments: 
+- one could lowercase all the mails, but then, headers become harder to discern since we are not dealing with
+original headers. 
+- 
