@@ -423,4 +423,27 @@ def process_dates_new_string(date_str):
                                                         #             Friday, August 05, 2016 5:34:39 PM (UTC-05:00) Eastern Time (US & Canada)
     return new_date
 #-----------------------------------------------------------------------
+def createDateFilters():
+    """
+    Compile a set of Regex Filters to check whether a string is a date
+
+    Return 
+    ------
+    A dictionary of filters
+    """
+
+    filters = {}
+    filters[re.compile(r'.*(PM|AM|pm|am|EST|MDT|PST|EDT|CDT|CST|HST|\(UTC\)|05:00\)|05:00|04:00\)|04:00|\+0000|Time|Canada\))\s*$')] = 'Sent'
+    filters[re.compile(r'^.*(CDT|HST|PDT|GMT\+00:00|\-0400|\-0500|[0-9]{1,2}:[0-9]{1,2})\s*$')] = 'Sent'
+    # filters[re.compile(r'^.*GMT+00:00$')] = 'Sent'
+    filters[re.compile(r'.*read on.*$')] = 'Sent'
+    return filters
+#------------------------------------------------------------------
+def is_date_valid(string, filters):
+    for regex, value in filters.items():
+        m = regex.match(string)
+        if regex.match(string):
+            return True
+    return False
+#-----------------------------------------------------------------------
 #-----------------------------------------------------------------------
