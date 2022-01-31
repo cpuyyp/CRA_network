@@ -423,7 +423,7 @@ def process_dates_new_string(date_str):
                                                         #             Friday, August 05, 2016 5:34:39 PM (UTC-05:00) Eastern Time (US & Canada)
     return new_date
 #-----------------------------------------------------------------------
-def createDateFilters():
+def create_date_filters():
     """
     Compile a set of Regex Filters to check whether a string is a date
 
