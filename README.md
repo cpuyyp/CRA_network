@@ -42,3 +42,84 @@ Old codes include: networkx.ipynb, networkx_ge.py, preprocess.py
 Testing codes include: string_tests.py
 
 All can be cleaned later.
+
+#-------------------------------------------------------------
+
+Column descriptions of the file output_with_stats_columns.csv . 
+Each row corresponds to an email. Duplicates have been removed. 
+Two mails are duplicates of each other if the following fields match: 
+'From', 'To', 'Sent', 'Body' . This is probably not foolproof. 
+We started with 71,143 emails, and have 39,444 emails after removal of 
+duplicates. Note that these emails were printed to pdf by the FBI, and 
+we then translated the pdf to ascii. There are quite a few errors, with many 
+fields missing. However, we did not access to the original emails. 
+
+A collection of pdfs were translated to text files (some available at Tallahassee
+Democrat). A text file might have a name such as: "18-3-Inkbridge2013-1-0.txt" . 
+These files are broken up into  individual emails, with all headers written in a standard
+order (which is not the case in emails), and with several additional headers to characterize
+the email more precisely. We generated 71,143 emails. Each email is stored in a separate
+file. A typical file name might be: "23793_fn_18-3-Inkbridge2013-1-0_ln_130.txt". The first 
+five digits constitute the email id, ranging from  0 to 71,142. Next is the name of the 
+pdf file that contains the email, prefixed by "fn", and finally, the line number that 
+corresponds to the last line of the email, prefixed by "ln". 
+
+filenm: string
+	The filename that contains the email at this row. 
+
+From: string that encloses a tuple of three strings
+	The mail originator (i.e., sender). It is always a single person. Sometimes there is more information than 
+	the sender, which indicates some error in the conversion from text to mail. The process is 
+	imperfect. 
+
+Sent: string
+    The time at which the email was sent. This must be converted to a proper datetime object, such as 
+	the number of seconds from a specific point in time. Note that all times should have the same frame
+	of reference. In this field, one finds times in multiple time zones, such as EST, GST, PST, etc. 
+	The time registrationn is a task that remains to be done. 
+
+To: string
+
+CC: 
+
+Bcc: 
+
+Subject: 
+
+Attachments: 
+
+Importance: 
+
+isThread: 
+
+isAutoMessage: 
+
+isDisplacement: 
+
+hasAllCapLine: 
+
+hasBadDate: 
+
+Body: 
+
+nb_words:
+
+nb_chars: 
+
+body_len: 
+
+body: 
+
+Error_from: 
+
+Error_sent: 
+
+mn_nb_words: 
+
+std_nb_words: 
+
+mn_nb_chars: 
+
+std_nb_chars: 
+
+#-------------------------------------------------------------
