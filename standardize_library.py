@@ -341,12 +341,303 @@ def round_trip_email(email_to_chosen, name_to_chosen):
     print("names_not_found_in_name_to_chosen: ", len(names_not_found_in_name_to_chosen))
     return names_not_found_in_name_to_chosen, non_email_match, email_match
 #--------------------------------------------------------
+
+# Original functions from Joey Jingze Zhang
+
+
+# find unique complete person in From section
+def search_from_section(from_list):
+    print("==> search_from_section")
+    for f in from_list[0:200]:
+        if pd.isnull(f):
+            continue
+        f = f.lower()
+        if re_behalf.match(f):
+            f = re_behalf.findall(f)[0]
+
+        first, last, email = check_email1(f)
+        if email == "":
+            print(f"email'', first: {first}, last: {last}, email: {email}")
+        if first == "":
+            print(f"first'', first: {first}, last: {last}, email: {email}")
+        if last == "":
+            print(f"last'', first: {first}, last: {last}, email: {email}")
+
+        if email not in named_email_list:
+            person = (first, last, email)
+            people_list.append(person)
+            named_email_list.append(email)
+            name_list.append(first + ' ' + last)  # should not be needed
+
+
+
+# find unique complete person in TO section
+def search_to_section(to_list):
+    print("==> search_to_section")
+    for ts in to_list[0:200]:
+        if pd.isnull(ts):  # if nan
+            continue
+        ts = ts.lower()
+        ts = ts.split(';')
+        for t in ts:
+            t = t.strip("'")
+            email_match = re_email.match(t)
+            bracket_match = re_bracket.match(t)
+            bracket2_match = re_bracket2.match(t)
+            if bracket_match:
+                print("bracket: ", bracket_match.groups())
+            if bracket2_match:
+                print("bracket2: ", bracket2_match.groups())
+            continue
+
+            if re_bracket.match(t) or re_bracket2.match(t):
+                if re_bracket.match(t):
+                    tname, temail = re_bracket.findall(t)[0]
+                else:
+                    tname, temail = re_bracket2.findall(t)[0]
+                tname_orig = tname
+                temail_orig = temail
+                tname=tname.lower().strip()
+                temail=temail.lower()
+                if tname == '':
+                    continue
+
+                if re_email.match(temail) and re_email.match(tname) == None:
+                    email = re_email.findall(temail)[0]
+                    if len(tname.split()) != 2:
+                        first_name = tname
+                        last_name = ' '
+                    else:
+                        first_name, last_name = check_name(tname, tname_orig, temail_orig)
+
+                    if email not in named_email_list:
+                        person = (first_name, last_name, email)
+                        people_list.append(person)
+                        named_email_list.append(email)
+                        name_list.append(first_name + ' ' + last_name)
+
+def search_cc_section(cc_list):
+    print("==> search_cc_section")
+    # find unique complete person in CC section
+    for ccs in cc_list:
+        if pd.isnull(ccs):
+            continue
+        #ccs = ccs.lower()  # not needed. tname is lowered further down
+        ccs = ccs.split(';')
+        for cc in ccs:
+            cc = cc.strip("'")
+            if re_bracket.match(cc) or re_bracket2.match(cc):
+                if re_bracket.match(cc):
+                    tname, temail = re_bracket.findall(cc)[0]
+                else:
+                    tname, temail = re_bracket2.findall(cc)[0]
+                tname_orig = tname
+                tname=tname.lower().strip()
+                temail_orig = temail
+                temail=temail.lower()
+                if tname == '':
+                    continue
+
+                if re_email.match(temail) and re_email.match(tname) == None:
+                    email = re_email.findall(temail)[0]
+                    if len(tname.split()) != 2:
+                        first_name, last_name = check_name(tname, tname_orig, temail_orig)
+                    else:
+                        first_name, last_name = check_name(tname, tname_orig, temail)
+
+                    if email not in named_email_list:
+                        person = (first_name, last_name, email)
+                        people_list.append(person)
+                        ## Obviously, person must have only two commas)
+                        split_person0 = person[0].split(',')
+                        if len(split_person0) != 1:  # SHOULD NOT HAPPEN in a perfect world
+                            print("SHOULD NOT HAPPEN: split_person: ", split_person0)  # <<< Identifies errors
+                            print("person: ", person)
+                            print("   tname: ", tname)
+                            print()
+                        named_email_list.append(email)
+                        name_list.append(first_name + ' ' + last_name)
 #--------------------------------------------------------
+
+def analyze_from_list(from_list):
+    new_from_list = []
+
+    unknown_idx = 0
+    # replace the From section with unique people information
+    # from_list: all the names from the From: column, without removing duplicates
+    # Purpose: ...
+
+    for f in from_list[0:200]:
+        if pd.isnull(f):  # NaN
+            person = ('f'+str(unknown_idx), 'l'+str(unknown_idx), 'f'+str(unknown_idx)+'_'+'l'+str(unknown_idx))
+            unknown_idx = unknown_idx + 1
+            new_from_list.append(person)
+            continue
+        email_exist_flag = 0
+        f = f.lower().strip("'")  #  "Why single quote?
+        email = ''
+        first_name = ''
+        last_name = ''
+        if re_behalf.match(f):
+            # f should be first/last name + email
+            f = re_behalf.findall(f)[0]
+            # print("re_behalf, f= ", f)
+
+
+        email_match = re_email.match(f)
+        if email_match:
+            # print("re_email matched, f: ", f)
+            # print("findall: ", re_email.findall(f))
+            email = email_match.groups()[-1]
+            first_last = email_match.groups()[0:-1]
+            # print("email_match, email: ", email)
+            # print("       f: ", f)
+            # print("             first_last: ", first_last)
+            if re_name2.match(first_last[0]):
+                # print("         re_name2 match: ", re_name2.match(f).groups())
+                last_name, first_name = re_name2.match(first_last[0]).groups()[0:2]
+                # print("name2: ", first_name, last_name)
+            elif re_name1.match(first_last[0]):
+                # print("         re_name1 match: ", re_name1.match(f).groups())
+                # print("first_last: ", first_last)
+                first_name, last_name = re_name1.match(first_last[0]).groups()[0:2]
+                # print("name1: ", first_name, last_name)
+            else:
+                # print("NO NAME MATCH, t: ", f)
+                first_name = 'fake'
+                last_name = 'fake'
+
+            email = email.lower()
+            email_exist_flag = 1
+            ## If email exists, why not add it to the named_email_list?
+            ## ANSWER: because named_email_list requires first/last name + email
+        else:
+            # print("No email match, f= ", f)
+            if re_name2.match(f):
+                # print("         re_name2 match: ", re_name2.match(f).groups())
+                last_name, first_name = re_name2.match(f).groups()[0:2]
+                # print("name2: ", first_name, last_name)
+            elif re_name1.match(f):
+                # print("         re_name1 match: ", re_name1.match(f).groups())
+                first_name, last_name = re_name1.match(f).groups()[0:2]
+                # print("name1: ", first_name, last_name)
+            else:
+                # if there is no name match, invent first and last names
+                # print("NO NAME MATCH, f: ", f)
+                # first_name = 'fake'
+                # last_name = 'fake'
+                first_name = 'f'+str(unknown_idx)
+                last_name = 'l'+str(unknown_idx)
+                unknown_idx = unknown_idx + 1
+        # if len(f.split()) != 2:    # CHECK
+        #     first_name = f
+        #     last_name = ' '     # why space and not empty
+        # else:   # two words separated by space
+        #     if re_name1.match(f):
+        #         name = re_name1.findall(f)[0]
+        #         first_name = name[0]
+        #         last_name = name[1]
+        #     elif re_name2.match(f):
+        #         name = re_name2.findall(f)[0]
+        #         first_name = name[1]
+        #         last_name = name[0]
+        #     elif email_exist_flag == 1:
+        #         pass
+        #     else:
+        #         print('error: cannot find name and email in f')
+        #         print('f:', f)
+        #         first_name = 'fake'
+        #         last_name = f
+
+        name = first_name + ' ' + last_name
+        if first_name == 'fake':
+            print(f"(fake name), f: {f}\n          first: {first_name}, last: {last_name}")
+            pass
+
+        ### NEED NEW DATASTRUCTURES
+
+        # all entries in named_email_list have a valid entry in people_list at the same index
+        if email in named_email_list:   # named_email_list: only emails
+            idx = named_email_list.index(email)
+            new_from_list.append(people_list[idx])
+        elif name in name_list:   ## WE MIGHT NOT NEED THIS (GE). Handle person with multiple emails
+            idx = name_list.index(name)
+            new_from_list.append(people_list[idx])
+        elif email_exist_flag == 1:   # email by itself
+            person = ('f'+str(unknown_idx), 'l'+str(unknown_idx), email)
+            print(f"==> mail by itself, f: {f}, \n          person: ", person)
+            print("              name: ", name)
+            new_from_list.append(person)
+            unknown_idx = unknown_idx + 1
+        else:
+            person = (first_name, last_name, first_name + '_' + last_name)
+            new_from_list.append(person)
 #--------------------------------------------------------
-#--------------------------------------------------------
-#--------------------------------------------------------
-#--------------------------------------------------------
-#--------------------------------------------------------
+
+def analyze_list_of_lists(list_of_lists):
+    new_to_lists = []
+
+    # replace the To section with unique people information
+
+    for ts in to_list:
+        if pd.isnull(ts):
+            new_to_lists.append([])
+            continue
+        ts = ts.lower()
+        ts = ts.split(';')
+        new_to_list = []
+        for t in ts:       # ts: list of recipients
+            t = t.strip("'")
+            email_exist_flag = 0
+            email = ''
+            first_name = ''
+            last_name = ''
+            if re_behalf.match(t):
+                t = re_behalf.findall(t)[0]
+
+            if re_email.match(t):
+                email = re_email.findall(t)[0]
+                email = email.lower()
+                email_exist_flag = 1
+            if len(t.split()) != 2:
+                first_name = t
+                last_name = ' '
+            else:
+                if re_name1.match(t):
+                    name = re_name1.findall(t)[0]
+                    first_name = name[0]
+                    last_name = name[1]
+                elif re_name2.match(t):
+                    name = re_name2.findall(t)[0]
+                    first_name = name[1]
+                    last_name = name[0]
+                elif email_exist_flag == 1:
+                    pass
+                else:
+                    first_name = 'fake'
+                    last_name = t
+                    print('error: cannot find name and email in t, make fake name')
+                    print(f"t: {t},  first: {first_name}, last: {last_name}")
+    #                 break
+
+            name = first_name + ' ' + last_name
+
+
+            if email in named_email_list:
+                idx = named_email_list.index(email)
+                new_to_list.append(people_list[idx])
+            elif name in name_list:
+                idx = name_list.index(name)
+                new_to_list.append(people_list[idx])
+            elif email_exist_flag == 1: # email by itself
+                person = ('f'+str(unknown_idx), 'l'+str(unknown_idx), email)
+                new_to_list.append(person)
+                unknown_idx = unknown_idx + 1
+            else:
+                person = (first_name, last_name, first_name + '_' + last_name)
+                new_to_list.append(person)
+        new_to_lists.append(new_to_list)
+    return new-to_list
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
