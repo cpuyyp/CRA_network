@@ -221,8 +221,12 @@ def overlap(name, email):
     return len(email.intersection(new_name))
 #----------------------------------------------------------
 
-def compute_email_to_chosen_name(email_to_names, null_chosen_names, email_to_chosen, email_to_names_with_periods):
+def compute_email_to_chosen_name(email_to_names):
     # An email should have only one name associated with it. 
+
+    null_chosen_names = []
+    email_to_chosen = {}
+    email_to_names_with_periods = {}
 
     for email, names in email_to_names.items():
         # Remove lines that are likely incorrect
@@ -232,20 +236,14 @@ def compute_email_to_chosen_name(email_to_names, null_chosen_names, email_to_cho
         if email == "": continue
         lg = 0
         chosen_name = ''
-        # print("\n",email, names)
         for name in names:
             if name[1] == 'unrecognized': continue
             # if first or last name contains a dot, flag it: 
             if re.match(r'.*\.[a-z]', name[0]) or re.match(r'.*\.[a-z]', name[1]):
-                # print("email: ", email, ",   name= ", name)
                 email_to_names_with_periods[email] = name
                 continue
-            # if last name ends in '\bgov' or '[\b_]com' or \bus, save it
-            #  'us'          'bus' 
             if re.match(r'\w*(:?gov|_?com|us|edu)$', name[1]):
                 if not re.match(r'.*\wus', name[1]):
-                    # if re.match('.*(:?gov)', name[1]):
-                    # print("==> email: ", email, ",   name: ", name)
                     email_to_names_with_periods[email] = name
                     continue
             lgo = overlap(name, email)
@@ -257,40 +255,23 @@ def compute_email_to_chosen_name(email_to_names, null_chosen_names, email_to_cho
         else:
             email_to_chosen[email] = chosen_name
 
-        # print("chosen name: ", chosen_name)
+    return null_chosen_names, email_to_chosen, email_to_names_with_periods
 
 #--------------------------------------------------------
 
-def compute_name_to_chosen_email(name_to_emails, names_to_remove, null_chosen_emails, name_to_chosen):
+def compute_name_to_chosen_email(name_to_emails):
     # An email should have only one name associated with it.
+
+    null_chosen_emails = []
+    names_to_remove = [] # not used
+    name_to_chosen = {}
 
     for name, emails in name_to_emails.items():
         # Remove lines that are likely incorrect
         if len(emails) > 10 or len(name) > 50: continue
-#         print("name: ", name, "email: ", emails)
-
-
-#         # Do not consider an email with no "@"
-#         if not re.match(".*@", email): continue
-#         if email == "": continue
-#         lg = 0
         chosen_email = ''
-        # print("\n",email, names)
         lg = 0
         for email in emails:
-        #     if name[1] == '': continue
-        #     # if first or last name contains a dot, flag it:
-        #     # if re.match(r'.*\.[a-z]', name[0]) or re.match(r'.*\.[a-z]', name[1]):
-        #     #     # print("email: ", email, ",   name= ", name)
-        #     #     email_to_names_with_periods[email] = name
-        #     #     continue
-        #     # if last name ends in '\bgov' or '[\b_]com' or \bus, save it
-        #     if re.match(r'\w*(:?gov|_?com|us|edu)$', name[1]):
-        #         if not re.match(r'.*\wus', name[1]):
-        #             # if re.match('.*(:?gov)', name[1]):
-        #             # print("==> email: ", email, ",   name: ", name)
-        #             email_to_names_with_periods[email] = name
-        #             continue
             lgo = overlap(name, email)
             if lgo > lg:
                 lg = lgo
@@ -300,12 +281,65 @@ def compute_name_to_chosen_email(name_to_emails, names_to_remove, null_chosen_em
         else:
             name_to_chosen[name] = chosen_email
 
-        # print("chosen name: ", chosen_name)
-        # break
+    return null_chosen_emails, names_to_remove, name_to_chosen
 #--------------------------------------------------------
 
+def round_trip_name(name_to_chosen, email_to_chosen):
+    emails_not_found_in_email_to_chosen = []
+    non_name_match = []
+    name_match = []
 
+    # Is name_to_chosen and email_to_chosen consistent? Let us find out? 
+    for name, email in name_to_chosen.items():
+        if len(email) > 50: continue
+        try:
+            new_name = email_to_chosen[email]
+        except:
+            # print("Exception, name: ", name, "email: ", email)
+            emails_not_found_in_email_to_chosen.append(email)
+            continue
+
+        if name != new_name:
+            non_name_match.append((name, new_name))
+        else:
+            name_match.append((name, new_name))
+            # print("name: ", name, ",   new_name: ", new_name)
+
+    print("non name match: ", len(non_name_match))
+    print("name match: ", len(name_match))
+    print("emails_not_found_in_email_to_chosen: ", len(emails_not_found_in_email_to_chosen))
+    return emails_not_found_in_email_to_chosen, non_name_match, name_match
 #--------------------------------------------------------
+
+def round_trip_email(email_to_chosen, name_to_chosen):
+    names_not_found_in_name_to_chosen = []
+    non_email_match = []
+    email_match = []
+
+    # Is name_to_chosen and email_to_chosen consistent? Let us find out? 
+    for email, name in email_to_chosen.items():
+        if len(name) > 50: continue
+        try:
+            new_email = name_to_chosen[name]
+        except:
+            # print("Exception, name: ", name, "email: ", email)
+            names_not_found_in_name_to_chosen.append(name)
+            continue
+
+        if email != new_email:
+            non_email_match.append((email, new_email, name))
+        else:
+            email_match.append((email, new_email, name))
+            # print("name: ", name, ",   new_name: ", new_name)
+
+    non_email_match.sort(key=lambda x: x[0])
+    email_match.sort(key=lambda x: x[0])
+    names_not_found_in_name_to_chosen.sort(key=lambda x: x[0])
+
+    print("non email match: ", len(non_email_match))
+    print("email match: ", len(email_match))
+    print("names_not_found_in_name_to_chosen: ", len(names_not_found_in_name_to_chosen))
+    return names_not_found_in_name_to_chosen, non_email_match, email_match
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
