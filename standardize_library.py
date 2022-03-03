@@ -3,21 +3,29 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
 from collections import defaultdict
-import re
+import regex as rex
 from function_library import *
+from copy import copy
+from unidecode import unidecode
+import name_matching_lib as nmlib
+
+rex.DEFAULT_VERSION = rex.VERSION1
 
 #--------------------------------------------------------
 # Search for "On Behalf" in the string.
-re_behalf = re.compile(r'(.*)[Oo]n [Bb]ehalf')
+re_behalf = rex.compile(r'(.*)[Oo]n [Bb]ehalf')
 
 # Search anywhere on the line for <mailto:xxxx> where xxx is the mailing address. 
 # The patterns also consider () and [] instead of <>. Extract the last occurence of 
 # an mail address via ().
-re_bracket = re.compile(r'(.*)[\[\<\(]mailto\:(.*?)[\]\>\)]')
+re_bracket = rex.compile(r'(.*)[\[\<\(]mailto\:(.*?)[\]\>\)]')
 
 # Search anywhere on the line for <xxxx>, (xxxx), or [xxxx]. Extract xxxx. If there are multiple 
 # occurences, extract the last one because .* is greedy.
-re_bracket2 = re.compile(r'(.*)[\[\<\(](.*?)[\]\>\)]')
+re_bracket2 = rex.compile(r'(.*)[\[\<\(](.*?)[\]\>\)]')
+
+# multiple internal words with two or more cap letters, sandwiched between two names starting with caps
+re_name_caps_name = rex.compile(r'\s?([A-Z][a-z]+)\s+(?:[A-Z]{2,}\s)+?([A-Z][a-z]+)\Z')
 
 # Fix email retrieved by bracket: removed special ending and beginning non-alphanumer characters, and 
 # remove any spaces
@@ -27,7 +35,7 @@ re_bracket2 = re.compile(r'(.*)[\[\<\(](.*?)[\]\>\)]')
 # ERROR: only allowing for a single space after the first name. Should be one or more spaces (\s+ intead of \s?) ?
 # After the (first_name + initial + dot), allow for one sapce, and a last name formed from 1 or more [A-Za-z]. 
 # Extract the last name with ()
-#re_name1 = re.compile(r'.*?([A-Za-z]+\s?[A-Z]?\.?)\s([A-Za-z]+)')  # Written by Joey
+#re_name1 = rex.compile(r'.*?([A-Za-z]+\s?[A-Z]?\.?)\s([A-Za-z]+)')  # Written by Joey
 
 # I would allow for multiple initials: Gordon A. Z. Erlebacher, or Gordon A Z Erlebacher (dots might be missing), 
 #  or Gordon AZ Erlebacher  (Multiple names, or concatenated initials)
@@ -35,7 +43,7 @@ re_bracket2 = re.compile(r'(.*)[\[\<\(](.*?)[\]\>\)]')
 # PROBLEM: if the first name has unicode characters, it is not found, and the first name   switches to the last name. 
 # That is probably the result of \b, and the fact I allow zero or more sections to the first name. 
 # I would like to capture the first name REGARDLESS OF THE CHARACTERS IN THE NAME, even numbers. So use \w and the UNICODE FLAG.
-re_name1 = re.compile(r""".*?   
+re_name1 = rex.compile(r""".*?   
     (                         # Capture first name +  middle names (abbreviated or not)
         #[A-Za-z]+             # First name (one or more characters)
         (?: \s?
@@ -47,15 +55,15 @@ re_name1 = re.compile(r""".*?
     #\s*\b([A-Za-z]+\b)             # Capture last name preceded by one or more spaces. 
     \s*\b(\w+\b)             # Capture last name preceded by one or more spaces. 
                                  # \b forces the last name to start at a word boundary
-""", re.X)
+""", rex.X | rex.UNICODE)
 
 # Extract last name with (), followed by a comma, (the last name only contains lower and upper case, no apostrophes or dashes)
 # Leave a single space, followed by first name ([A-Za-z], zero or more (?) spaces (\s) (ERROR: should be 1 ore more spaces (+), 
 # followed by 0 or 1 initials [A-Z] followed by 0 or 1 dots (\.?). NOT GENERAL ENOUGH. What about Erle, Gordon A.E.F. or 
 #   Erle, Gordon A. E.   F. ? 
-#re_name2 = re.compile(r'.*?([A-Za-z]+),\s([A-Za-z]+\s?[A-Z]?\.?)')  # Joey's version
+#re_name2 = rex.compile(r'.*?([A-Za-z]+),\s([A-Za-z]+\s?[A-Z]?\.?)')  # Joey's version
 # Gordon's version
-re_name2 = re.compile(r""".*?
+re_name2 = rex.compile(r""".*?
     #([A-Za-z]+)\b,\s*                  # Capture last name followed by comma
     (\w+)\b,\s*                  # Capture last name followed by comma
     (                                  # Capture first name and initials
@@ -63,13 +71,14 @@ re_name2 = re.compile(r""".*?
             (?:\b\w+\b\.?\s*)?   # Not captured: Abbreviation structure
         )*                             # Not captured: 0 or more sequence of abbreviations
     )   
-""", re.X)  
+""", (rex.X | rex.UNICODE)  )
 
-re_name3 = re.compile(r""".*?
+re_name3 = rex.compile(r""".*?
     ([\w^0-9]+)
-""", re.X | re.UNICODE)
+""", rex.X | rex.UNICODE)
 
-
+# Remove (some punctuation, phd, jr, mr, ms, mrs, dr, iii, ii
+re_honorifics = rex.compile(r'\b([\.,_-]|p\.?h\.?d\.?|j\.?r\.?|mr\.|ms\.|mrs\.|dr\.|ii|iii)', rex.I)
 
 # Capture an email: that is a very complex exercise, so it it unlikely that this approarch works, but it is likely good enough. 
 # Here is an more complex solution: https://www.oreilly.com/library/view/regular-expressions-cookbook/9781449327453/ch04s01.html
@@ -77,7 +86,7 @@ re_name3 = re.compile(r""".*?
 #   The email is a series of [a-zA-Z_] followed by zero or one dots \.? followed by one or more letter/number (/w), followed by '@'. 
 #   followed by [a-zA-Z_0-9] (equiv to [\w] zero or more times, followed by a dot (0 or 1 times), followed by [a-zA-Z_] 0 or more, 
 #  followed by period 0 or more, followed by 2 or three letters 
-re_email =  re.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_0-9]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})')
+re_email =  rex.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_0-9]*\.?[a-zA-Z_]*\.?[a-zA-Z]{2,3})')
 
 #  The following special characters are allowed in an email name:  ! # $ % & ' * + - / = ? ^ _ ` { |
 #  For now, we ignore them. 
@@ -86,14 +95,14 @@ re_email =  re.compile(r'.*?([a-zA-Z_]*\.?\w+@[a-zA-Z_0-9]*\.?[a-zA-Z_]*\.?[a-zA
 # Hyphens are allowed, but must be surrounded by characters: (?:[A-Za-z0-9]+\-?)+[A-Za-z0-9]+
 # Domain name rules: https://www.dynadot.com/community/blog/domain-name-rules.html
 #                    https://www.20i.com/support/domain-names/domain-name-restrictions
-re_email1 = re.compile(r'.*?([\w.]*@[A-Za-z0-9\-]*\.?[a-zA-Z_]*\.?[a-zA-Z])')  # not used
+re_email1 = rex.compile(r'.*?([\w.]*@[A-Za-z0-9\-]*\.?[a-zA-Z_]*\.?[a-zA-Z])')  # not used
 
-re_domain = re.compile(r""".*?(  
+re_domain = rex.compile(r""".*?(  
      (?: (?:  [A-Za-z0-9]+\-?)+[A-Za-z0-9]+\.)+ (?: [A-Za-z]+)
-)""", re.X)
+)""", rex.X)
 
 # Rewritten by G. Erlebacher, 2022-02-13.
-re_email = re.compile(r"""(.*?)(
+re_email = rex.compile(r"""(.*?)(
      [\w.]*@    # email name: upper/lower case, numerals, dots, underscores
      (?:        # non-captured domain name
          (?:    # non-captured
@@ -103,14 +112,162 @@ re_email = re.compile(r"""(.*?)(
      )+                         # non-capture: one or more of `seqB`
      (?: [A-Za-z]+)             # the final domain segment, after the last dot
     )   # capture full email
-""", re.X)
+""", rex.X)
 
-re_first_last = re.compile(r'^([A-Z][a-z]*)([A-Z][a-z]*)$')
+re_first_last = rex.compile(r'^([A-Z][a-z]*)([A-Z][a-z]*)$', rex.UNICODE)
+re_remove_internal_initials = rex.compile(r'\A\s*(\w+\s+)(?:\w+\.?\s?)*(\s\w+)\Z', rex.UNICODE)
+
+#re_remove_front_initials = rex.compile(r'\A(?>\w+\.?\s?)*(\w+\s+\w+)\Z', rex.UNICODE)
+re_remove_front_initials = rex.compile(r"""\A
+        (?>\w+\.?\s?)*     # Atomic: once pattern is found, do not retrace.
+                           #  multi-letters & dot(s) & space(s) (the entire structure repeated)
+        (\w+\s+\w+)        #  word & space & word
+        \Z""", rex.UNICODE | rex.X)
+
+#re_domain = rex.compile(r'.*\. (?:com|edu|gov|us|org|[\w\.]+\.\s+\w+)\Z') #, flags=rex.I)
+re_domain = rex.compile(r'.*[a-z]\.\s+(?:\w+\Z)') #, flags=rex.I)
+#  Remove all names ending in a dot followed by a space, and then \w+ (capture these to see them)
+re_remove_suffixes = rex.compile(r'\s+(?:III)\Z', flags=rex.I)
+#re_breakup_camelcase = rex.compile(r'\A
+
+def explode_camelcase(name):
+    # explode camelcase '\1 \2' except for certain words like VanGordon. 
+    return rex.sub(r'(?=\w+$)([a-z])(?<!(?:Cur|La|Ha|Mac|Mc|Di|De|Van|Du))([A-Z])', r'\1 \2', name, flags=rex.UNICODE)
+    #return rex.sub(r'([a-z])([A-Z])', r'\1 \2', name)
+
+def remove_suffixes(name): 
+    return rex.sub(' (?:III)\Z', '', name, rex.I)
+
+def remove_internal_caps(name):
+    match = re_name_caps_name.match(name)
+    if match:
+        groups = match.groups()
+        return groups[0] + ' ' + groups[1]
+    else:
+        return name
+
+def remove_internal_initials(name):
+    name1 = re_remove_internal_initials.findall(name)
+    if name1 == []:
+        return name
+    else:
+        return "".join(name1[0])
+
+def remove_front_initials(name):
+    #print("remove_front: name: ", name)
+    name1 = re_remove_front_initials.findall(name)
+    if name1 == []:
+        return name
+    else:
+        return "".join(name1[0])
+
+def remove_multi_spaces(name):
+    return rex.sub(r'\s+', ' ', name)
+
+def remove_non_words(name):
+    return rex.sub(r'[\.\-_,;!?\'\"]', '', name)
+
+def join_prefix_to_stem(name):
+    return  rex.sub(r'\A(Cur|La|Ha|Mac|Mc|Di|De|Van|Du) (\w+)\Z', r'\1\2', name, flags=rex.U | rex.I)
+
+def remove_honorifics(name): 
+    #name = rex.sub(r'(?<!\w)\s+(?:jr|dr|mr|mrs|ms|phd|md|tdia)', '', name, flags=rex.I | rex.U)
+    name = rex.sub(r'\b(?:jr|sr|dr|mr|mrs|ms|phd|md|tdia)\b', '', name, flags=rex.I | rex.U)
+    name = rex.sub(r'\b(?:Rep|AE|AIA|AICP)\b', '', name, rex.U)
+    # Some of the initials could be middle names in disguise. So perhaps these should be removed
+    # after other processing is done
+    return name
+    #return rex.sub(r'\A(dr|mr|mrs|ms|ph\.d\.)\.*\s?', '', name, flags=rex.I | rex.U)
 
 
+def starts_with_number(name):
+    return rex.sub(r'\A\d.*\Z', 'unrecognized', name)
 
+def remove_domains(name): 
+    if re_domain.match(name):
+    # Also remove names that end with a dot: "gordon. com"
+        return "unrecognized"
+    else:
+        return name
+    return 
 
+VERBOSE = False
 
+def clean_name(name):
+    """
+    Standardize name
+    Parameters
+    ----------
+    name : string
+        The string of characters to normalized
+
+    Return
+    ------
+        return the cleaned name
+    """
+    if VERBOSE: print("--- init name: ", name)
+    name = unidecode(name)
+    name = remove_multi_spaces(name)
+    name = remove_honorifics(name)
+    if VERBOSE: print("  after remove_honorifics: ", name)
+    name = remove_domains(name)
+    if VERBOSE: print("  after remove_domains: ", name)
+    name = rex.sub(' (III\Z)', '', name, rex.I)  
+    if VERBOSE: print("  after remove_suffixes: ", name)
+    name = remove_internal_initials(name)   #  REMOVE THIS
+    if VERBOSE: print("  after remove_domains: ", name)
+    name = remove_front_initials(name)  # REMOVE THIS
+    if VERBOSE: print("  after remove_front: ", name)
+    name = remove_non_words(name)
+    if VERBOSE: print("  after remove_non_w: ", name)
+    name = starts_with_number(name)   # PERHAPS SIMPLY REMOVE THE NUMBER
+    #name = explode_camelcase(name)
+    name = remove_multi_spaces(name)
+    if VERBOSE: print("  after remove_multis_paces: ", name)
+    #name = remove_internal_caps(name)
+    return name.lower()
+
+def clean_name_better(name):
+    """
+    Standardize name
+    Parameters
+    ----------
+    name : string
+        The string of characters to normalized
+
+    Return
+    ------
+        return the cleaned name
+    """
+    # check_name is where "last, first" is transformed to "first last"
+    # However, there was no check for multiple commas. The switch should only be made if there is only a single comma. 
+    name = unidecode(name)
+    name = rex.sub(r'\A([^,]+),([^,]+)\Z', r'\2 \1', name)  # Only a single comma
+    if VERBOSE: print("--- init name: ", name)
+    name = remove_multi_spaces(name)
+    name = remove_honorifics(name)
+    if VERBOSE: print("  after remove_honorifics: ", name)
+    name = remove_domains(name)
+    if VERBOSE: print("  after remove_domains: ", name)
+    name = rex.sub(' (III\Z)', '', name, rex.I)  
+    #if VERBOSE: print("  after remove_suffixes: ", name)
+    #name = remove_internal_initials(name)   #  REMOVE THIS
+    if VERBOSE: print("  after remove_domains: ", name)
+    #name = remove_front_initials(name)  # REMOVE THIS
+    if VERBOSE: print("  after remove_front: ", name)
+    name = remove_non_words(name)
+    if VERBOSE: print("  after remove_non_w: ", name)
+    #name = starts_with_number(name)   # PERHAPS SIMPLY REMOVE THE NUMBER
+    #name = explode_camelcase(name)
+    # Remove numbers separated by spaces
+    name = re.sub(r'\b\d+\b', '', name)
+    #  '5Gor' => 'Gor'
+    name = re.sub(r'\d+([A-Z])', r'\1', name)
+    if VERBOSE: print("  after remove digits: ", name)
+    name = remove_multi_spaces(name)
+    if VERBOSE: print("  after remove_multi_spaces: ", name)
+    name = remove_internal_caps(name)
+    return name.lower()
 
 #--------------------------------------------------------
 
@@ -119,27 +276,17 @@ def check_name(tname, tname_orig, temail_orig, unrecognized_names):
         name = re_name2.findall(tname)[0]
         first_name = name[1]
         last_name = name[0]
-        # if first_name == '' or last_name == '':
-        #     print("--> full name: ", tname)
-        #     print("     first: ", first_name, "    last: ", last_name)
     elif re_name1.match(tname):
         name = re_name1.findall(tname)[0]
         first_name = name[0]
         last_name = name[1]
-        # if first_name == '' or last_name == '':
-        #     print("==> full name: ", tname)
-        #     print("     first: ", first_name, "    last: ", last_name)
     else:
         first_name = ''   # I am throwing away the incorrect string
         last_name = 'unrecognized'
-        # How many letters are capitalized in tname_orig
-        # search = re.search(r'(?:[A-Z][^A-Z]+){2}', tname_orig)
-        # if len(re_cap.findall(tname_orig)) == 2:
         first_last = re_first_last.match(tname_orig.strip())
         if first_last: 
             first_name = first_last.group(1).lower()
             last_name = first_last.group(2).lower()
-            # print("*** valid name: ", tname_orig, first_name, last_name)
         else:
             unrecognized_names.add((tname_orig.strip(), temail_orig.strip()))
         
@@ -153,50 +300,93 @@ def check_email(f, regex):
     return tname, temail
 #----------------------------------------------------------
 
-def check_email1(f, unrecognized_names):
+def check_email1(f, unrecognized_names, field_dict):
     bracket = re_bracket.match(f)
     bracket2 = re_bracket2.match(f)
     email = re_email.match(f)
-    # print("f: ", f)
     if bracket:
-        # print("bracket ")
         temail = bracket.groups()[1]
         tname = bracket.groups()[0]
     elif bracket2:
-        # print("bracket 2")
         temail = bracket2.groups()[1]
         tname = bracket2.groups()[0]
     elif email:
-        # print("re_email")
         temail = email.groups()[1]
         tname = email.groups()[0]
     else:
         temail = ""
         tname = f
 
-    temail = re.sub("[\s\?]+", "", temail)
+    temail = rex.sub("[\s\?]+", "", temail)
     first_name, last_name = check_name(tname, tname, temail, unrecognized_names)
-    # print("tname: ", tname, ",  temail: ", temail)
-    # print("           first: ", first_name, ", last: ", last_name)
-    return first_name.strip(), last_name.strip(), temail.strip()
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+    full_name = first_name + ' ' + last_name
+    temail = temail.strip()
+    field_dict[f] = (full_name, temail)
+    return first_name, last_name, temail
+    #return full_name, temail
+#-----------------------------------------------------------
+def check_name_first(tname, unrecognized_names):
+    if re_name2.match(tname): 
+        name = re_name2.findall(tname)[0]
+        first_name = name[1]
+        last_name = name[0]
+    elif re_name1.match(tname):
+        name = re_name1.findall(tname)[0]
+        first_name = name[0]
+        last_name = name[1]
+    else:
+        first_name = ''   # I am throwing away the incorrect string
+        last_name = 'unrecognized'
+        first_last = re_first_last.match(tname.strip())
+        if first_last: 
+            first_name = first_last.group(1)
+            last_name = first_last.group(2)
+        else:
+            unrecognized_names.add(tname)
+        
+    return first_name.strip() + ' ' + last_name.strip()
+#----------------------------------------------------------
+def extract_name_email(f, unrecognized_names):
+    bracket = re_bracket.match(f)
+    bracket2 = re_bracket2.match(f)
+    email = re_email.match(f)
+    if bracket:
+        temail = bracket.groups()[1]
+        tname = bracket.groups()[0]
+    elif bracket2:
+        temail = bracket2.groups()[1]
+        tname = bracket2.groups()[0]
+    elif email:
+        temail = email.groups()[1]
+        tname = email.groups()[0]
+    else:
+        temail = ""
+        tname = f
+
+    temail = rex.sub("[\s\?]+", "", temail)
+    full_name = check_name_first(tname, unrecognized_names)
+    temail = temail.strip()
+    return full_name, temail
 #----------------------------------------------------------
 
-def ge_search_from(from_list, email_to_names, name_to_emails, unrecognized_names):
+def ge_search_from(from_list, email_to_names, name_to_emails, unrecognized_names, field_dict):
     for f in from_list:
+        # Dictionary values will be updated at a later time
         if pd.isnull(f):
-            # print("from is null: ", f)
             continue
         is_behalf = ''
         if re_behalf.match(f):
             f = re_behalf.findall(f)[0]
-            is_behalf = 'b_'
+            is_behalf = ''  # Do not modify the name
 
-        first, last, email = check_email1(f, unrecognized_names)
+        first, last, email = check_email1(f, unrecognized_names, field_dict)
         email_to_names[email].add((is_behalf+first, is_behalf+last))
         name_to_emails[(first, last)].add(is_behalf+email)
 #----------------------------------------------------------
 
-def ge_search_list_of_lists(the_list, email_to_names, name_to_emails, unrecognized_names):
+def ge_search_list_of_lists(the_list, email_to_names, name_to_emails, unrecognized_names, field_dict):
     # print("==> search_to_section")
     for ts in the_list: 
         if pd.isnull(ts):  # if nan
@@ -205,53 +395,161 @@ def ge_search_list_of_lists(the_list, email_to_names, name_to_emails, unrecogniz
         ts = ts.split(';')
         for t in ts:
             t = t.strip("'")
-            first, last, email = check_email1(t, unrecognized_names)
+            first, last, email = check_email1(t, unrecognized_names, field_dict)
             email_to_names[email].add((first, last))
             name_to_emails[(first, last)].add(email) 
 #----------------------------------------------------------
+# create dictionary of all elements from To:, From:, Cc: to itself: el -> el
+def create_field_dict(from_list, to_list, cc_list):
+    field_dict = defaultdict(str)
+    for f in from_list:
+        if pd.isnull(f):
+            continue
+        field_dict[f] = f
 
-def overlap(name, email):
+    for el in cc_list:
+        if pd.isnull(el):
+            continue
+        ts = el.split(';')
+        for f in ts:
+            field_dict[f] = f
+
+    for el in to_list:
+        if pd.isnull(el):
+            continue
+        ts = el.split(';')
+        for f in ts:
+            field_dict[f] = f
+
+    return field_dict
+#----------------------------------------------------------
+def clean_field_dict_values(field_dict, nb_el_to_process= 1000000):
+    # Process field_dict: simplify all names
+    # field_dict values already contained simplifed names. Here I am repeating n
+    # the work with slightly different routines
+    # return field_dict1: dict str => tuple(clean name, email) (unicodes replaced)
+    unique_names = defaultdict(set)
+    removed = []
+    unrecognized_names = set()
+    field_dict1 = defaultdict(tuple)
+    #field_list =list(field_dict.items())
+
+    for i, (k,v) in enumerate(field_dict.items()):
+    #for i, el in enumerate(field_list):
+        #name = unidecode(v)  # a single string
+        name = v  # a single string
+        name0 = copy(name)
+        if i > nb_el_to_process: break
+        n, e = extract_name_email(name, unrecognized_names)
+
+        name = n
+        temail = e
+
+        name1 = clean_name_better(name)
+
+        if len(name) > 30: 
+            #print(f"REMOVE, {len(name)}: name")
+            removed.append(name)
+            continue
+        # Remove any email
+        #name1 = rex.sub(r'[\"\'\s]+(\[mailto:|<mailto:|<\w+@|\A\w+@).*\Z', '', name1, rex.I | rex.UNICODE)
+        name1 = rex.sub(r'[\"\'\s]+(\[mailto:|<mailto:|<\w+@|\A\w+@).*\Z', '', name1, rex.I | rex.UNICODE)
+        if rex.match(r'@', name1):
+            print("MATCH @ (SHOULD NOT OCCUR): ", name1)
+        # 'unrecognized': neither re_name1 or re_name2 match
+        if name1 != 'unrecognized': 
+            name2 = explode_camelcase(name1)   # no effect since everything is lowercase
+            name1 = clean_name_better(name1).strip()   # Why is this one needed (there are no more capitalizations)
+            # key: cleaned name
+            # value: set of From, To, CC fiels
+            # List of unique names
+            unique_names[name1].add(v)
+        #field_dict1[name0] = (name1, temail.lower())
+        field_dict1[name0] = (rex.sub(r'\s', '', name1), temail.lower())
+        #print("--------------------------")
+    return field_dict1, unique_names, removed, unrecognized_names
+#----------------------------------------------------------
+def overlap_str_str(str1, str2):
+    str1 = set(str1)
+    str2 = set(str2)
+    return len(str1.intersection(str2)), len(str1), len(str2)
+#----------------------------------------------------------
+# I would like to compute coninous overlap. That means using some form of regex
+def overlap_tuple_str(name, email):
     # return the number of common characters
     
-    email = set(re.sub("@.*$","", email))
-    first = re.sub("^_b", "", name[0])
-    last  = re.sub("^_b", "", name[1])
-    new_name = set(re.sub("[^\w]", "", first+last))
-    # print("email: ", email, ",  name: ", name)
+    email = set(rex.sub("@.*$","", email))
+    first = rex.sub("^_b", "", name[0])
+    last  = rex.sub("^_b", "", name[1])
+    new_name = set(rex.sub("[^\w]", "", first+last))
+    #print("email: ", email, ",  name: ", new_name)
     return len(email.intersection(new_name))
+#----------------------------------------------------------
+def str_to_set_lower(str_to_set):
+    # return new dictionary with elements in value set lowered
+    # the keys remain unchanged
+    # Will only work if the values are lists of strings. More general versions could lower
+    # the keys, and check whether the keys are a tuple.
+    str_to_set_lower = defaultdict(set)
+    for i, (k,v) in enumerate(str_to_set.items()):
+        v1 = set()
+        for el in v:
+            if el != "":
+                v1.add(el.lower())
+        str_to_set_lower[k] = v1
+    return str_to_set_lower
 #----------------------------------------------------------
 
 def compute_email_to_chosen_name(email_to_names):
-    # An email should have only one name associated with it. 
+    """
+    An email should have only one name associated with it. 
+    Return a sequence of 3 arrays
+        - null_chosen_names: chosen name is ''
+        - email_to_chosen
+        - email_to_names_with_periods
+    """
 
     null_chosen_names = []
     email_to_chosen = {}
     email_to_names_with_periods = {}
 
     for email, names in email_to_names.items():
+        #print("email=> ", email)
         # Remove lines that are likely incorrect
         if len(email) > 50 or len(names) > 5: continue
         # Do not consider an email with no "@"
-        if not re.match(".*@", email): continue
+        if not rex.match(".*@", email): continue
         if email == "": continue
         lg = 0
         chosen_name = ''
+        lst = []
+        lgo_lst = []
+        compare_what = []
         for name in names:
+            lst.append(name)
+            #print("names= ", names)
             if name[1] == 'unrecognized': continue
             # if first or last name contains a dot, flag it: 
-            if re.match(r'.*\.[a-z]', name[0]) or re.match(r'.*\.[a-z]', name[1]):
+            if rex.match(r'.*\.[a-z]', name[0]) or rex.match(r'.*\.[a-z]', name[1]):
                 email_to_names_with_periods[email] = name
                 continue
-            if re.match(r'\w*(:?gov|_?com|us|edu)$', name[1]):
-                if not re.match(r'.*\wus', name[1]):
+            if rex.match(r'\w*(:?gov|_?com|us|edu)$', name[1]):
+                if not rex.match(r'.*\wus', name[1]):
                     email_to_names_with_periods[email] = name
                     continue
-            lgo = overlap(name, email)
+            # Added lower()
+            name1 = name.lower() #(name[0].lower(), name[1].lower())
+            #lgo = overlap_tuple_str(name1, email.lower())
+            lgo, len1, len2 = overlap_str_str(name1, rex.sub("@.*$", "", email.lower()))
+            compare_what.append((name1, email.lower()))
+            lgo_lst.append(lgo)
             if lgo > lg:
                 lg = lgo
                 chosen_name = name
         if chosen_name == '':
             null_chosen_names.append((email, names))
+            print("null name list: ", lst, "    email ", email, "   lgo_lst: ", lgo_lst)
+            print("     compare_what: ", compare_what)
         else:
             email_to_chosen[email] = chosen_name
 
@@ -272,7 +570,10 @@ def compute_name_to_chosen_email(name_to_emails):
         chosen_email = ''
         lg = 0
         for email in emails:
-            lgo = overlap(name, email)
+            # Lower case comparison
+            #lgo = overlap(name, email)
+            name1 = (name[0].lower(), name[1].lower())
+            lgo = overlap(name1, email.lower())
             if lgo > lg:
                 lg = lgo
                 chosen_email = email
@@ -282,6 +583,10 @@ def compute_name_to_chosen_email(name_to_emails):
             name_to_chosen[name] = chosen_email
 
     return null_chosen_emails, names_to_remove, name_to_chosen
+#--------------------------------------------------------
+
+def tuple_lower(name):
+    return (name[0].lower(), name[1].lower())
 #--------------------------------------------------------
 
 def round_trip_name(name_to_chosen, email_to_chosen):
@@ -299,10 +604,12 @@ def round_trip_name(name_to_chosen, email_to_chosen):
             emails_not_found_in_email_to_chosen.append(email)
             continue
 
-        if name != new_name:
-            non_name_match.append((name, new_name))
+
+        #if name != new_name:
+        if tuple_lower(name) != tuple_lower(new_name):
+            non_name_match.append((name, new_name, email))
         else:
-            name_match.append((name, new_name))
+            name_match.append((name, new_name, email))
             # print("name: ", name, ",   new_name: ", new_name)
 
     print("non name match: ", len(non_name_match))
@@ -344,7 +651,6 @@ def round_trip_email(email_to_chosen, name_to_chosen):
 
 # Original functions from Joey Jingze Zhang
 
-
 # find unique complete person in From section
 def search_from_section(from_list):
     print("==> search_from_section")
@@ -368,8 +674,6 @@ def search_from_section(from_list):
             people_list.append(person)
             named_email_list.append(email)
             name_list.append(first + ' ' + last)  # should not be needed
-
-
 
 # find unique complete person in TO section
 def search_to_section(to_list):
@@ -639,9 +943,244 @@ def analyze_list_of_lists(list_of_lists):
         new_to_lists.append(new_to_list)
     return new-to_list
 #--------------------------------------------------------
+# Further processing of names: 
+#  Adrian A. Jones ==> Adrian Jones (ignore middle names)
+#  A. Adrian Johnes ==> Adrian Jones (remove short initials)
+# Adrian Jones Sr. ==> Adrian Jones (remove Sr. Ph.D., III)
+# Adrian. Jones ==> Adrian Jones (remove punctuation)
+# 
+# How to distinguish: 
+# (('ANDREW J', 'BASCOM'), 'abascom@wradvisors.com'),
+#  (('ANDREWJ', 'BASCOM'), 'abascom@wradvisors.com'),
+# The second line does not have a space between ANDREW and J
+# Check by removing spaces from first name and if there is a match, 
+# keep the first name wihtout space
+
+# After talking with Joey, I decided to only keep emails; each will 
+#  will have a set of associated name (first, last). 
+# Jr, Sr, PhD, etc will be removed from the names
+#--------------------------------------------------------
+def get_names_without_emails_from_list(lst):
+    names_without_emails = []
+    for k in lst:
+        if not rex.match('.*@.*', k):
+            names_without_emails.append(k)
+    return names_without_emails
+#--------------------------------------------------------
+def get_names_without_emails_from_dict_tuples(dct):
+    # Read a dictionary of tuples (name, email)
+    # Return a list of tuples (field name, cleaned name)
+    names_without_emails = []
+    for k,v in dct.items():
+        try:
+            if not rex.match('.*@.*', v[1]):
+                names_without_emails.append((k, v[0]))
+        except:
+            print(v)
+    return names_without_emails
+#--------------------------------------------------------
+def compute_email_name_dicts1(field_dict):
+    # each value of field dict is a 2-tuple: key, value
+    # The key is the content of the raw email From:, To:, CC: fields
+    # The value is the cleaned up email and value (not perfect cleanup)
+    # Scan the values of field_dict, and create two dictionaries:
+    #     name -> set of emails
+    #     email -> set of names
+
+    email_to_names = defaultdict(set)
+    name_to_emails = defaultdict(set)
+    for i,(k,v) in enumerate(field_dict.items()):
+        email = v[1]
+        name = v[0]
+        email_to_names[email].add(name)
+        name_to_emails[name].add(email)
+    return email_to_names, name_to_emails
+#--------------------------------------------------------
+def compute_email_name_dicts(field_dict):
+    # each value of field dict is a 2-tuple: key, value
+    # The key is the content of the raw email From:, To:, Cc: fields (name+email in one string, dirty)
+    # The value is the cleaned up email and name (not perfect cleanup)
+    # Scan the values of field_dict, and create two dictionaries: 
+    #     name -> set of emails
+    #     email -> set of names
+    # Both the key and values are clean
+
+    # Also compute a list of clean names without emails and a list of clean names without emails. 
+    
+    email_to_names = defaultdict(set)
+    name_to_emails = defaultdict(set)
+    clean_names_without_email = set()
+    clean_names_with_email = set()
+
+    for i,(k,v) in enumerate(field_dict.items()):
+        try:
+            email = v[1]
+            name = v[0]
+        except:
+            print(f"k,v: {k}____{v}")
+            continue
+
+        name_to_emails[name].add(email)
+
+        if name and name != 'unrecognized':
+            email_to_names[email].add(name)
+
+    # Identify names without emails
+    for name, v in name_to_emails.items():
+        if '' in v:
+            if len(v) == 1:
+                clean_names_without_email.add(name)
+            else:
+                clean_names_with_email.add(name)
+
+    clean_names_without_email = list(clean_names_without_email)
+    clean_names_without_email.sort(key=lambda x: x)
+    clean_names_with_email = list(clean_names_with_email)
+    clean_names_with_email.sort(key=lambda x: x)
+
+    return email_to_names, name_to_emails, clean_names_without_email, clean_names_with_email
+#--------------------------------------------------------
+def print_dict(dct, n=20, max_length=None):
+    if max_length == None: 
+        max_length = 100000
+    print("len: ", len(dct))
+    for i, (k,v) in enumerate(dct.items()):
+        if len(v) > max_length: continue
+        if i >= n: break
+        print(f"{k}_______{v}")
+#--------------------------------------------------------
+def print_list(my_list, n=20):
+    print("len: ", len(my_list))
+    for i, el in enumerate(my_list):
+        print(f"[{i}] : {el}")
+        if i == n: break
+#--------------------------------------------------------
+def invert_dictionary(field_dict):
+    # Transform a dictionary key_str => value_str into
+    # an inverse dictionary value_str => set(key_str1, key_str2)
+    unique = defaultdict(set)
+    for k, v in field_dict.items():
+        unique[v].add(k)
+    return unique
+#--------------------------------------------------------
+def clean_to_unclean_names(field_dict):
+    """
+    field_dict: unclean => clean name, email)
+    return: clean => set(unclean names)
+    """
+    clean_to_unclean = defaultdict(set)
+
+    for k,v in field_dict.items():
+        clean_to_unclean[v[0]].add(k)
+
+    return clean_to_unclean
+#--------------------------------------------------------
+class StandardizeNames:
+    def __init__(self, From, Cc, To):
+        self.from_list = From
+        self.cc_list = Cc
+        self.to_list = To
+        self.create_field_dict()
+
+    def clean_name(self, name):
+        return clean_name(name)
+
+    def create_field_dict(self):
+        self.field_dict = create_field_dict(self.from_list, self.to_list, self.cc_list)
+
+    def clean_field_dict_values(self):
+        self.field_dict1, self.unique_names, self.removed, self.unrecognized_names = \
+                clean_field_dict_values(self.field_dict)
+
+    def clean_to_unclean_names(self):
+        """  string => set """
+        self.clean_to_unclean = clean_to_unclean_names(self.field_dict1)
+        #self.clean_to_unclean.sort(key = lambda x: x)
+        # Given dict: str => set, sort the dictionary keys
+
+    def compute_email_name_dicts(self):
+        self.email_to_names, \
+        self.name_to_emails, \
+        self.clean_names_without_emails, \
+        self.clean_names_with_emails = \
+                compute_email_name_dicts(self.field_dict1)
+
+    def get_names_without_emails_from_list(self, name_list):
+        self.names_without_emails = get_names_without_emails_from_list(name_list)
+
+    def get_names_without_emails_from_dict_tuples(self, name_dct):
+        self.names_without_emails = get_names_without_emails_from_dict_tuples(name_list)
+
+    def process(self):
+        self.create_field_dict()
+        self.clean_field_dict_values()
+        self.compute_email_name_dicts()
+        self.get_names_without_emails_from_list(self.field_dict1)
+
+    def print_dict(self, dictionary, nb_to_print, max_length=10):
+        print_dict(dictionary, nb_to_print, max_length=max_length)
+
+    def print_list(self, my_list, nb_to_print):
+        print_list(my_list, nb_to_print)
+
+    def print_separator(self):
+        print("========================================================================================" + 
+              "==========================================")
+
+    def print_data(self, nb_to_print=5, max_length=10):
+        self.print_separator()
+        print(">> field_dict <<")
+        print("   Name => Name  (identity operator)")
+        self.print_dict(self.field_dict, nb_to_print, max_length=max_length)
+
+        self.print_separator()
+        print(">> field_dict1 <<")
+        print("   Name => (clean Name, email)")
+        self.print_dict(self.field_dict1, nb_to_print, max_length=max_length)
+
+        self.print_separator()
+        print(">> email_to_names <<")
+        print("   email => (sequence of clean names)")
+        self.print_dict(self.email_to_names, nb_to_print, max_length=max_length)
+
+        self.print_separator()
+        print(">> names_to_emails <<")
+        print("   name => (sequence of emails)")
+        self.print_dict(self.name_to_emails, nb_to_print, max_length=max_length)
+
+        self.print_separator()
+        print(">> names_without_emails <<")
+        print("   original full names ")
+        self.print_list(self.names_without_emails, nb_to_print)
+
+        self.print_separator()
+        print(">> clean_names_without_emails <<")
+        print("   list of cleaned names without no associated emails")
+        self.print_list(self.clean_names_without_emails, nb_to_print)
+        self.print_separator()
+
+        self.print_separator()
+        print(">> clean_names_with_emails <<")
+        print("   list of cleaned names with associated emails")
+        self.print_list(self.clean_names_with_emails, nb_to_print)
+        self.print_separator()
+
+    def name_matches(self, name_list):
+        self.matches_df = nmlib.name_matches(name_list)
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#--------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
 #----------------------------------------------------------
 #----------------------------------------------------------
 #----------------------------------------------------------
