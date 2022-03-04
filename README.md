@@ -57,6 +57,10 @@ Testing codes include: string_tests.py
 
 All can be cleaned later.
 
+### Additional files
+- build_new_output_csv.ipynb : create an output file, starting from individual emails. File does not use any local function library.
+- preprocessing_testing.ipynb : Read individual text files, and create collection of emails
+
 #-------------------------------------------------------------
 
 Column descriptions of the file output_with_stats_columns.csv . 
