@@ -48,6 +48,11 @@ and Eastern Savings Time (EST) since the two types of time cannot occur on the s
 typically in both zones in different parts of the year. However, 5 am  PST is converted to 8 am EST. Spelling errors in the 
 different elements have been corrected. 
 
+### handle_to_header.ipynb  (handling the Cc header is similar to the to: header)
+Handle the comma separated elements of from_header and transform them to semi-colon separated fields. 
+Treat various special cases, the most prominent being when the number of fields is the same as the number of commas. In 
+that case, simply replace the commas by semi-colons. 
+
 TODO:
 1. add a column to the dataframe to show whether the email is sent in day time or night time
 2. calculate some stats about the length of title and subject, and add to the dataframe as columns

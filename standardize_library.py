@@ -410,7 +410,11 @@ def create_field_dict(from_list, to_list, cc_list):
     for el in cc_list:
         if pd.isnull(el):
             continue
-        ts = el.split(';')
+        ts = el.split(';')    
+        ## Should sometimes split by comma, which leads to difficulties
+        ## Erlebacher, Gordon, Zhang, Joey (cannot tell breaks)
+        ## Gordon Erlebacher, Joey Zhang  (can tell breaks. So if all elements have at least two words)
+        ## If number of commas == number of emails - 1, then break by commas is safe. NOT DONE. 
         for f in ts:
             field_dict[f] = f
 
