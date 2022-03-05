@@ -40,6 +40,14 @@ Using 'output4.csv' as the inputing data, in which emails are sorted in time asc
 
 'new_preprocess.py' is the file that process 'output4.csv'. The first pass drops several useless columns from the original dataframe for efficiency. The second pass will standardize names to be triplets in the form of (first_name, last_name, email_address). For some special cases, where at least one of the triplet is missing, a fake name or fake email address will be assigned.
 
+### handle_sent_header.ipynb
+Read an output.csv file with a Sent: header, and generate consistent formatting for all the entries. Generate
+three new columns: Date (yyyy-mm-dd), Time (hh-mm), and timestamp (the number of seconds from a fixed time around 1970. 
+All times are expressed in Eastern Daylight Time. I ignore the one hour difference between Eastern Daylight Time (EDT)
+and Eastern Savings Time (EST) since the two types of time cannot occur on the same day. Also, office hours are 8-5 pm 
+typically in both zones in different parts of the year. However, 5 am  PST is converted to 8 am EST. Spelling errors in the 
+different elements have been corrected. 
+
 TODO:
 1. add a column to the dataframe to show whether the email is sent in day time or night time
 2. calculate some stats about the length of title and subject, and add to the dataframe as columns
@@ -184,5 +192,15 @@ mn_nb_chars: Float
 
 std_nb_chars: Float
 	The standard deviation of the number of characters in an email for each individual sender. 
+
+date_sent: string
+	The day the email was sent expressed as 'yyyy-mm-dd'
+
+time_sent: string
+    The time the email was sent expressed as 'hh-mm'
+
+timestamp: float
+	The number of seconds measured from a fixed reference point, somewhere in the 1970's. This 
+	will allow temporal algorithms to be applied easily.
 
 #-------------------------------------------------------------
