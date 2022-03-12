@@ -181,7 +181,7 @@ Error_from:  Boolean
 	True when the length of (first,last,email) exceeds 200 characters. This indicates high probability of an error in the `From` field. 
 
 Error_sent: Float
-	True when the length of timestamp exceeds 200 characters. This indicates high probability of an error in th	 `Sent` field. 
+	True when the length of Sent field exceeds 200 characters. This indicates high probability of an error in th	 `Sent` field. 
 
 email_count: Integer
 	The number of emails for each unique sender. 

@@ -102,8 +102,9 @@ re_domain = rex.compile(r""".*?(
 )""", rex.X)
 
 # Rewritten by G. Erlebacher, 2022-02-13.
+# Simplified version of allowable emails
 re_email = rex.compile(r"""(.*?)(
-     [\w.]*@    # email name: upper/lower case, numerals, dots, underscores
+     [\w\-.]*@    # email name: upper/lower case, numerals, dots, underscores
      (?:        # non-captured domain name
          (?:    # non-captured
              [A-Za-z0-9]+\-?    # sequence of letters/numbers followed by one hyphen (`seqA`)
@@ -226,6 +227,49 @@ def clean_name(name):
     if VERBOSE: print("  after remove_multis_paces: ", name)
     #name = remove_internal_caps(name)
     return name.lower()
+    name = rex.sub(r"\s*(Deputy County Administrator|Swift Creek Middle School Assistant Principal|Executive\s?Director|Neighborhood\s?Services|(iNKBRIDGE)?\s+Business Fax)", "", name, flags=rex.I)
+    name = rex.sub(r"\s*(Human\s?Resources|solid\s?waste|commissioner|orthodontics|community board|CHIARAPODERI)", "", name, flags=rex.I)
+    name = rex.sub(r"representative", "tallahassee", name, flags=rex.I)
+    name = rex.sub(r'construction business fax', "", name, flags=rex.I)
+    name = rex.sub(r'public works', "", name, flags=rex.I)
+    name = rex.sub(r'labor analytics', "", name, flags=rex.I)
+    name = rex.sub(r'assistant', "", name, flags=rex.I)
+    name = rex.sub(r'Electronet Broadband Communications  Business Fax', "", name, flags=rex.I)
+    name = rex.sub(r'Commission on the Status of Women and Girls', "", name, flags=rex.I)
+    # if this case is not removed, the string is probably too long and is removed from consideration
+    # Automation would be nice. While this string contains a single email, some strings are long and do not. 
+    # or some strings contain a date/time, or a cost ($420), which is obviously in error. 
+    if rex.match(r'.*Division', name) and rex.match(r'.*Historical', name):
+        print("1. MATCH, name: ", name)
+        name = rex.sub(r'Division of Historical Resources Department', '', name, flags=rex.I)
+        print("2. MATCH, name: ", name)
+    name = rex.sub(r'All Saints District Community Association', '', name, flags=rex.I)
+    name = rex.sub(r'Downtown Tallahassee Business Associatio', '', name, flags=rex.I)
+    name = rex.sub(r'Federal and Foundation Assistance Monitor', '', name, flags=rex.I)
+    # Remove On behalf of and everything before
+
+def remove_job_descriptors(name):
+    name = rex.sub(r"\s*(Deputy County Administrator|Swift Creek Middle School Assistant Principal|Executive\s?Director|Neighborhood\s?Services|(iNKBRIDGE)?\s+Business Fax)", "", name, flags=rex.I)
+    name = rex.sub(r"\s*(Human\s?Resources|solid\s?waste|commissioner|orthodontics|community board|CHIARAPODERI)", "", name, flags=rex.I)
+    name = rex.sub(r"representative", "tallahassee", name, flags=rex.I)
+    name = rex.sub(r'construction business fax', "", name, flags=rex.I)
+    name = rex.sub(r'public works', "", name, flags=rex.I)
+    name = rex.sub(r'labor analytics', "", name, flags=rex.I)
+    name = rex.sub(r'assistant', "", name, flags=rex.I)
+    name = rex.sub(r'Electronet Broadband Communications  Business Fax', "", name, flags=rex.I)
+    name = rex.sub(r'Commission on the Status of Women and Girls', "", name, flags=rex.I)
+    # if this case is not removed, the string is probably too long and is removed from consideration
+    # Automation would be nice. While this string contains a single email, some strings are long and do not. 
+    # or some strings contain a date/time, or a cost ($420), which is obviously in error. 
+    if rex.match(r'.*Division', name) and rex.match(r'.*Historical', name):
+        print("1. MATCH, name: ", name)
+        #name = rex.sub(r'Division of Historical Resources Department', '', name, flags=rex.I)
+        name = rex.sub(r'Florida Department, Division of Historical Resources, Grants Department', '', name, flags=rex.I)
+        print("2. MATCH, name: ", name)
+    name = rex.sub(r'All Saints District Community Association', '', name, flags=rex.I)
+    name = rex.sub(r'Downtown Tallahassee Business Associatio', '', name, flags=rex.I)
+    name = rex.sub(r'Federal and Foundation Assistance Monitor', '', name, flags=rex.I)
+    return name
 
 def clean_name_better(name):
     """
@@ -239,34 +283,72 @@ def clean_name_better(name):
     ------
         return the cleaned name
     """
+    name = unidecode(name)
+    VERBOSE = False
+    if rex.match(r'.*Florida', name) and rex.match(r'.*Historical', name):
+        print("VERBOSE True")
+        VERBOSE = True
     # check_name is where "last, first" is transformed to "first last"
     # However, there was no check for multiple commas. The switch should only be made if there is only a single comma. 
-    name = unidecode(name)
     name = rex.sub(r'\A([^,]+),([^,]+)\Z', r'\2 \1', name)  # Only a single comma
     if VERBOSE: print("--- init name: ", name)
     name = remove_multi_spaces(name)
     name = remove_honorifics(name)
-    if VERBOSE: print("  after remove_honorifics: ", name)
+    #if VERBOSE: print("  after remove_honorifics: ", name)
     name = remove_domains(name)
-    if VERBOSE: print("  after remove_domains: ", name)
+    #if VERBOSE: print("  after remove_domains: ", name)
     name = rex.sub(' (III\Z)', '', name, rex.I)  
     #if VERBOSE: print("  after remove_suffixes: ", name)
     #name = remove_internal_initials(name)   #  REMOVE THIS
-    if VERBOSE: print("  after remove_domains: ", name)
+    #if VERBOSE: print("  after remove_domains: ", name)
     #name = remove_front_initials(name)  # REMOVE THIS
-    if VERBOSE: print("  after remove_front: ", name)
+    #if VERBOSE: print("  after remove_front: ", name)
+
+    name = remove_job_descriptors(name)
+
+    # Remove punctuation
     name = remove_non_words(name)
-    if VERBOSE: print("  after remove_non_w: ", name)
+    #if VERBOSE: print("  after remove_non_w: ", name)
     #name = starts_with_number(name)   # PERHAPS SIMPLY REMOVE THE NUMBER
     #name = explode_camelcase(name)
     # Remove numbers separated by spaces
     name = re.sub(r'\b\d+\b', '', name)
+    # Handle army names
+    if rex.match(r'.*(USARMY)', name):
+        # Should I remove spaces from the name? 
+        name = rex.sub(r'(NG FLARNG|NGFLARNG|NGFLARNG|FLARNG)', '', name)
+        name = rex.sub(r'USARMY', '', name)
+        name = rex.sub(r' US ', ' ', name)
+        name = rex.sub(r'(SFC|MSG|SGT|1ST|SSG|COL|SFC|III|WMAJ|SPC|1SG|MAJ|EDSON|CPT|II|SGM|JrLTC|LTC|CSM|NG FLANG|1LT|NGFLANG|NG|NDARNG|NFG|CIVNG)', '', name)
+    if rex.match(r'.*FLARNG', name):
+        name = rex.sub('NG\s*FLARNG.*US', '', name)
+        name = rex.sub(r'(SFC|MSG|SGT|1ST|SSG|COL|SFC|III|WMAJ|SPC|1SG|MAJ|EDSON|CPT|II|SGM|JrLTC|LTC|CSM|NG FLANG|1LT|NGFLANG|NG|NDARNG|NFG|CIVNG|CTR|CIV)', '', name)
+    if rex.match(r'.*NG\s+FLANG\s+US', name):
+        name = rex.sub('NG\s+FLANG\s+US', '', name)
+        name = rex.sub(r'(SFC|MSG|SGT|1ST|SSG|COL|SFC|III|WMAJ|SPC|1SG|MAJ|EDSON|CPT|II|SGM|JrLTC|LTC|CSM|NG FLANG|1LT|NGFLANG|NG|NDARNG|NFG|CIVNG|CTR|CIV)', '', name)
+
+    # Remove more honorifics. Not clear whether I should since I lose information about the person. 
+    # Perhaps the honorific should stay together with the name. 
+    # NOTE: Processing Jr. can be tricky. For example: "Gordon Erlebacher, Jr. Joey Jingze" in the To: field probably refers to two names  with 
+    # Jr. attached to the first name. 
+
+    #if rex.match(r'.*behalf', name, flags=rex.I):
+    #    print(name)
+    if rex.match(r'.*on behalf of', name, flags=rex.I):
+        #print("bef: ", name)
+        name = rex.sub(r'^.*on behal. of', '', name, flags=rex.I)
+        #print("aft: ", name)
+
     #  '5Gor' => 'Gor'
     name = re.sub(r'\d+([A-Z])', r'\1', name)
-    if VERBOSE: print("  after remove digits: ", name)
+    #if VERBOSE: print("  after remove digits: ", name)
     name = remove_multi_spaces(name)
-    if VERBOSE: print("  after remove_multi_spaces: ", name)
+    #if VERBOSE: print("  after remove_multi_spaces: ", name)
     name = remove_internal_caps(name)
+    if rex.match(r'ARMY', name): # DEBUG
+        print("ARMY MATCH. SHOULD NOT HAPPEN")
+
+    VERBOSE = False
     return name.lower()
 
 #--------------------------------------------------------
@@ -427,7 +509,7 @@ def create_field_dict(from_list, to_list, cc_list):
 
     return field_dict
 #----------------------------------------------------------
-def clean_field_dict_values(field_dict, nb_el_to_process= 1000000):
+def clean_field_dict_values(field_dict, nb_el_to_process= 10000000, remove_if_longer_than=40):
     # Process field_dict: simplify all names
     # field_dict values already contained simplifed names. Here I am repeating n
     # the work with slightly different routines
@@ -439,22 +521,47 @@ def clean_field_dict_values(field_dict, nb_el_to_process= 1000000):
     #field_list =list(field_dict.items())
 
     for i, (k,v) in enumerate(field_dict.items()):
-    #for i, el in enumerate(field_list):
-        #name = unidecode(v)  # a single string
         name = v  # a single string
         name0 = copy(name)
         if i > nb_el_to_process: break
+
+        # Best to call this prior to extracting name and email
+        name = remove_job_descriptors(name)
         n, e = extract_name_email(name, unrecognized_names)
 
         name = n
         temail = e
 
+        flag = False
+
+        #if rex.match(r'.*Florida', k) and rex.match(r'.*Historical', k):
+        if rex.match(r'.*GAY RIGHTS BACKERS GET BOOST IN CONSERVATIVE COMMUNITY', k):
+            print("field_dict: ", field_dict[k])
+            print("=> MATCH, key: ", k)
+            print("   MATCH, name: ", name)
+            print("   MATCH, temail: ", temail)
+            print("   MATCH, name1: ", name1)
+            flag = True
+
+        #if i > 540 and i < 550: print(f"({i}) {name}")
+        name = rex.sub('\"', '', name)
         name1 = clean_name_better(name)
 
-        if len(name) > 30: 
+        """
+        if rex.match(r".*Florida Professional Firefighters  fpf@fpf.org", k):
+            print("matched: Florida Professional Firefighters  fpf@fpf.org")
+            print("v: ", v)
+            print(f"n: {n},   e: {e}")
+            print("name1: ", name1)
+            print("len(name): ", len(name1))
+        """
+
+        if len(name1) > remove_if_longer_than: 
             #print(f"REMOVE, {len(name)}: name")
+            field_dict1[name0] = 'invalid'
             removed.append(name)
             continue
+
         # Remove any email
         #name1 = rex.sub(r'[\"\'\s]+(\[mailto:|<mailto:|<\w+@|\A\w+@).*\Z', '', name1, rex.I | rex.UNICODE)
         name1 = rex.sub(r'[\"\'\s]+(\[mailto:|<mailto:|<\w+@|\A\w+@).*\Z', '', name1, rex.I | rex.UNICODE)
@@ -469,7 +576,13 @@ def clean_field_dict_values(field_dict, nb_el_to_process= 1000000):
             # List of unique names
             unique_names[name1].add(v)
         #field_dict1[name0] = (name1, temail.lower())
+        #if rex.match(r".*Florida Professional Firefighters  fpf@fpf.org", name0):
+            #print("matched: Florida Professional Firefighters  fpf@fpf.org")
+
+        # Remove spaces from names
         field_dict1[name0] = (rex.sub(r'\s', '', name1), temail.lower())
+        #if flag == True:
+            #print("True, name0: ", name0)
         #print("--------------------------")
     return field_dict1, unique_names, removed, unrecognized_names
 #----------------------------------------------------------
@@ -478,7 +591,7 @@ def overlap_str_str(str1, str2):
     str2 = set(str2)
     return len(str1.intersection(str2)), len(str1), len(str2)
 #----------------------------------------------------------
-# I would like to compute coninous overlap. That means using some form of regex
+# I would like to compute continous overlap. That means using some form of regex
 def overlap_tuple_str(name, email):
     # return the number of common characters
     
@@ -1080,11 +1193,12 @@ def clean_to_unclean_names(field_dict):
     return clean_to_unclean
 #--------------------------------------------------------
 class StandardizeNames:
-    def __init__(self, From, Cc, To):
+    def __init__(self, From, Cc, To, remove_if_longer_than=40):
         self.from_list = From
         self.cc_list = Cc
         self.to_list = To
         self.create_field_dict()
+        self.remove_if_longer_than = remove_if_longer_than
 
     def clean_name(self, name):
         return clean_name(name)
@@ -1094,7 +1208,8 @@ class StandardizeNames:
 
     def clean_field_dict_values(self):
         self.field_dict1, self.unique_names, self.removed, self.unrecognized_names = \
-                clean_field_dict_values(self.field_dict)
+                clean_field_dict_values(self.field_dict, 
+                remove_if_longer_than=self.remove_if_longer_than)
 
     def clean_to_unclean_names(self):
         """  string => set """
@@ -1172,8 +1287,124 @@ class StandardizeNames:
     def name_matches(self, name_list):
         self.matches_df = nmlib.name_matches(name_list)
 #--------------------------------------------------------
+def clean_lowercase_name(name):
+    name = rex.sub('sheilacos4gan', 'sheilacostigan', name)
+    name = rex.sub('rudys4vers', 'rudystivers', name)
+    name = rex.sub('marktarmeyat4mdesign', 'marktarmey@4mdesign', name)
+
+    name = rex.sub('kris4ndozier', 'kristindozier', name)
+    name = rex.sub('cris4nagarcia', 'cristinagarcia', name)
+    name = rex.sub('jus4nvarn', 'justinvarn', name)
+    name = rex.sub('dextermar4n', 'dextermartin', name)
+    name = rex.sub('chris4nejwhite', 'christinejwhite', name)
+    name = rex.sub('alsorren4', 'alsorrenti', name) # (Al Sorrenti)
+    name = rex.sub('blairmar4n', 'blairmartin', name)
+    name = rex.sub('richardsoncur4s', 'richardsoncurtis', name)
+
+    name = rex.sub('dozierkris4n', 'kristindozier', name)
+    name = rex.sub('gsquaredproduc4ons', 'gsquaredproductions', name)
+    name = rex.sub('execu4veteam', 'executiveteam', name)
+    name = rex.sub('christophercan4ello', 'christophercantiello', name)
+    name = rex.sub('chris4hale', 'christihale', name)
+    name = rex.sub('sarahvalen4ne', 'sarahvalentine', name)
+    #name = rex.sub('chris_neece4re'   # NOT SURE Might be real. 
+
+    return name
 #--------------------------------------------------------
+def update_header_list_of_lists(my_list, field_dict2, stand):
+    count = 0
+    count_nan = 0
+    nb_exceptions = 0
+    max_count = -1  # set to negative number to count all cases
+    new_my_list = []
+    break_flag = False
+    # for lst in df.To.values:
+    for m, lst in enumerate(my_list):
+        new_split_list = set()
+        if type(lst) != str:
+            count_nan += 1
+            new_my_list.append('invalid_nan')
+            continue
+        els = lst.split(";")
+        for i, el in enumerate(els):
+            count += 1
+            try:
+                f = field_dict2[el]
+                if f == 'unrecognized':
+                    f = 'invalid'
+                # if a date
+                elif rex.match(r'.*/20\d\d', el):
+                    f = 'invalid'
+                f = clean_lowercase_name(f)
+                new_split_list.add(f)
+            except:
+                nb_exceptions += 1
+                print(f"({i} Exception, el: __{el}__, ___field_dict1: {stand.field_dict1[el]}")
+                print(f"  lst: __{lst}__")
+                print(f"    field_dict2[{el}] = {field_dict2[el]}")
+                print("     SHOULD NOT HAPPEN, otherwise new_my_list will be out of sync with my_list")
+                traceback.print_exc()
+                break_flag = True
+                break
+        # Rebuild semi-colon-separated list
+        if break_flag == True:
+            break
+        new_my_list.append(";".join(new_split_list))
+        if max_count > 0 and count >= max_count: break
+    print("End count= ", count)
+    print("nb nan: ", count_nan)
+    print("Number exceptions: ", nb_exceptions)
+    ### ERROR: new_my_list way too long. Not being updated at the right place
+    print("len my_list, new_my_list: ", len(my_list), len(new_my_list))
+    return new_my_list
 #--------------------------------------------------------
+def update_header_list(my_list, field_dict2, stand):
+    count = 0   # set to negative number to count all cases
+    max_count = -1  # set to negative number to count all cases
+    nb_exceptions = 0
+    new_my_list = []
+    # for lst in df.To.values:
+    print(len(my_list))
+    for i, el in enumerate(my_list):
+        if type(el) != str:
+            # print(f"({i}) NOT string: {el}")  # nan
+            new_my_list.append('invalid')
+            continue
+        try:
+            f = field_dict2[el]
+            if f == 'unrecognized':
+                f = 'invalid'
+            f = clean_lowercase_name(f)
+            new_my_list.append(f)
+            ### emily@oasis@comcast.net SHOULD BE CAPTURED. FIGURE THIS OUT.
+            # print(f)
+        except:
+            nb_exceptions += 1
+            print(f"({i} Exception, el: __{el}__, ___field_dict1: {stand.field_dict1[el]}")
+            print(f"    field_dict2[{el}] = {field_dict2[el]}")
+            print("     SHOULD NOT HAPPEN, otherwise new_my_list will be out of sync with my_list")
+            traceback.print_exc()
+            break
+        if max_count > 0 and count >= max_count: break
+        count += 1
+
+    print("End count= ", count)
+    print("Number exceptions: ", nb_exceptions)
+    print("len my_list, new_my_list: ", len(my_list), len(new_my_list))
+    return new_my_list
+#--------------------------------------------------------
+# MUST BE MODIFED WHEN DEALING WITH LISTS OF LISTS? Check into this.  <<<< 2022-03-12 (Saturday)
+def construct_field_dict2(stand):
+    field_dict2 =  {}
+    for i, (k,v) in enumerate(stand.field_dict1.items()):
+        if v == ():
+            # print(f"k: {k}, empty value")
+            field_dict2[k] = 'invalid'
+        elif v[1] == '':
+            field_dict2[k] = v[0]
+        else:
+            field_dict2[k] = v[1]
+    return field_dict2
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
