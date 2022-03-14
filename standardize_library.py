@@ -17,12 +17,13 @@ re_behalf = rex.compile(r'(.*)[Oo]n [Bb]ehalf')
 
 # Search anywhere on the line for <mailto:xxxx> where xxx is the mailing address. 
 # The patterns also consider () and [] instead of <>. Extract the last occurence of 
-# an mail address via ().
-re_bracket = rex.compile(r'(.*)[\[\<\(]mailto\:(.*?)[\]\>\)]')
+# an mail address via (). Make sure that '@' appears in the email. Do not check that 
+# '@' appears only once
+re_bracket = rex.compile(r'(.*)[\[\<\(]mailto\:(.*@.*)[\]\>\)]')
 
 # Search anywhere on the line for <xxxx>, (xxxx), or [xxxx]. Extract xxxx. If there are multiple 
 # occurences, extract the last one because .* is greedy.
-re_bracket2 = rex.compile(r'(.*)[\[\<\(](.*?)[\]\>\)]')
+re_bracket2 = rex.compile(r'(.*)[\[\<\(](.*@.*)[\]\>\)]')
 
 # multiple internal words with two or more cap letters, sandwiched between two names starting with caps
 re_name_caps_name = rex.compile(r'\s?([A-Z][a-z]+)\s+(?:[A-Z]{2,}\s)+?([A-Z][a-z]+)\Z')
@@ -240,9 +241,9 @@ def clean_name(name):
     # Automation would be nice. While this string contains a single email, some strings are long and do not. 
     # or some strings contain a date/time, or a cost ($420), which is obviously in error. 
     if rex.match(r'.*Division', name) and rex.match(r'.*Historical', name):
-        print("1. MATCH, name: ", name)
+        #print("1. MATCH, name: ", name)
         name = rex.sub(r'Division of Historical Resources Department', '', name, flags=rex.I)
-        print("2. MATCH, name: ", name)
+        #print("2. MATCH, name: ", name)
     name = rex.sub(r'All Saints District Community Association', '', name, flags=rex.I)
     name = rex.sub(r'Downtown Tallahassee Business Associatio', '', name, flags=rex.I)
     name = rex.sub(r'Federal and Foundation Assistance Monitor', '', name, flags=rex.I)
@@ -262,10 +263,10 @@ def remove_job_descriptors(name):
     # Automation would be nice. While this string contains a single email, some strings are long and do not. 
     # or some strings contain a date/time, or a cost ($420), which is obviously in error. 
     if rex.match(r'.*Division', name) and rex.match(r'.*Historical', name):
-        print("1. MATCH, name: ", name)
+        #print("1. MATCH, name: ", name)
         #name = rex.sub(r'Division of Historical Resources Department', '', name, flags=rex.I)
         name = rex.sub(r'Florida Department, Division of Historical Resources, Grants Department', '', name, flags=rex.I)
-        print("2. MATCH, name: ", name)
+        #print("2. MATCH, name: ", name)
     name = rex.sub(r'All Saints District Community Association', '', name, flags=rex.I)
     name = rex.sub(r'Downtown Tallahassee Business Associatio', '', name, flags=rex.I)
     name = rex.sub(r'Federal and Foundation Assistance Monitor', '', name, flags=rex.I)
@@ -345,8 +346,8 @@ def clean_name_better(name):
     name = remove_multi_spaces(name)
     #if VERBOSE: print("  after remove_multi_spaces: ", name)
     name = remove_internal_caps(name)
-    if rex.match(r'ARMY', name): # DEBUG
-        print("ARMY MATCH. SHOULD NOT HAPPEN")
+    #if rex.match(r'ARMY', name): # DEBUG
+        #print("ARMY MATCH. SHOULD NOT HAPPEN")
 
     VERBOSE = False
     return name.lower()
@@ -448,6 +449,10 @@ def extract_name_email(f, unrecognized_names):
         tname = f
 
     temail = rex.sub("[\s\?]+", "", temail)
+    # On the off-chance there is an 'at' 
+    temail = rex.sub(r' at ', r'@', temail)
+    if not rex.match(r'.*@', temail):
+        temail = ""
     full_name = check_name_first(tname, unrecognized_names)
     temail = temail.strip()
     return full_name, temail
@@ -481,13 +486,16 @@ def ge_search_list_of_lists(the_list, email_to_names, name_to_emails, unrecogniz
             email_to_names[email].add((first, last))
             name_to_emails[(first, last)].add(email) 
 #----------------------------------------------------------
-# create dictionary of all elements from To:, From:, Cc: to itself: el -> el
 def create_field_dict(from_list, to_list, cc_list):
+    """
+    Create dictionary of all elements from To:, From:, Cc: to itself: el -> el. 
+    """
     field_dict = defaultdict(str)
     for f in from_list:
         if pd.isnull(f):
             continue
         field_dict[f] = f
+
 
     for el in cc_list:
         if pd.isnull(el):
@@ -498,6 +506,7 @@ def create_field_dict(from_list, to_list, cc_list):
         ## Gordon Erlebacher, Joey Zhang  (can tell breaks. So if all elements have at least two words)
         ## If number of commas == number of emails - 1, then break by commas is safe. NOT DONE. 
         for f in ts:
+            if pd.isnull(f): continue
             field_dict[f] = f
 
     for el in to_list:
@@ -505,6 +514,7 @@ def create_field_dict(from_list, to_list, cc_list):
             continue
         ts = el.split(';')
         for f in ts:
+            if pd.isnull(f): continue
             field_dict[f] = f
 
     return field_dict
@@ -517,8 +527,9 @@ def clean_field_dict_values(field_dict, nb_el_to_process= 10000000, remove_if_lo
     unique_names = defaultdict(set)
     removed = []
     unrecognized_names = set()
+    # "Original field" => 2-tuple (name, email)
+    # the (name, email) is derived solely from the "original field" value
     field_dict1 = defaultdict(tuple)
-    #field_list =list(field_dict.items())
 
     for i, (k,v) in enumerate(field_dict.items()):
         name = v  # a single string
@@ -535,13 +546,13 @@ def clean_field_dict_values(field_dict, nb_el_to_process= 10000000, remove_if_lo
         flag = False
 
         #if rex.match(r'.*Florida', k) and rex.match(r'.*Historical', k):
-        if rex.match(r'.*GAY RIGHTS BACKERS GET BOOST IN CONSERVATIVE COMMUNITY', k):
-            print("field_dict: ", field_dict[k])
-            print("=> MATCH, key: ", k)
-            print("   MATCH, name: ", name)
-            print("   MATCH, temail: ", temail)
-            print("   MATCH, name1: ", name1)
-            flag = True
+        #if rex.match(r'.*GAY RIGHTS BACKERS GET BOOST IN CONSERVATIVE COMMUNITY', k):
+            #print("field_dict: ", field_dict[k])
+            #print("=> MATCH, key: ", k)
+            #print("   MATCH, name: ", name)
+            #print("   MATCH, temail: ", temail)
+            #print("   MATCH, name1: ", name1)
+            #flag = True
 
         #if i > 540 and i < 550: print(f"({i}) {name}")
         name = rex.sub('\"', '', name)
@@ -1129,6 +1140,9 @@ def compute_email_name_dicts(field_dict):
     clean_names_without_email = set()
     clean_names_with_email = set()
 
+    print_dict(field_dict, 10)
+
+    print("len(field_dict): ", len(field_dict))
     for i,(k,v) in enumerate(field_dict.items()):
         try:
             email = v[1]
@@ -1141,6 +1155,9 @@ def compute_email_name_dicts(field_dict):
 
         if name and name != 'unrecognized':
             email_to_names[email].add(name)
+
+    print("len(email_to_names): ", len(email_to_names))
+    print("len(name_to_emails): ", len(name_to_emails))
 
     # Identify names without emails
     for name, v in name_to_emails.items():
@@ -1157,14 +1174,35 @@ def compute_email_name_dicts(field_dict):
 
     return email_to_names, name_to_emails, clean_names_without_email, clean_names_with_email
 #--------------------------------------------------------
-def print_dict(dct, n=20, max_length=None):
+def print_dict(dct, n=20, min_length=0, max_length=None, is_sorted=True, with_empties=True):
+    print(with_empties)
     if max_length == None: 
         max_length = 100000
     print("len: ", len(dct))
-    for i, (k,v) in enumerate(dct.items()):
-        if len(v) > max_length: continue
-        if i >= n: break
-        print(f"{k}_______{v}")
+    if is_sorted: 
+        lst = list(dct.items())
+        lst.sort(key=lambda x: x[0])
+        for i, k in enumerate(lst):
+            if i >= n: break
+            #print(f"==> {k[0]}______{k[1]}")
+            if not with_empties and '' in k[1]: 
+                k[1].remove('')
+            if len(k[1]) == 0:
+                continue
+            if len(k[1]) > max_length or len(k[1]) < min_length: 
+                continue
+            print(f"{k[0]}______{k[1]}")
+    else:
+        for i, (k,v) in enumerate(dct.items()):
+            if i >= n: break
+            #print(f"{k}_______{v}")
+            if not with_empties and '' in v: 
+                v.remove('')
+            if v == {}:
+                continue
+            if len(v) > max_length or len(v) < min_length: 
+                continue
+            print(f"{k}_______{v}")
 #--------------------------------------------------------
 def print_list(my_list, n=20):
     print("len: ", len(my_list))
@@ -1192,100 +1230,55 @@ def clean_to_unclean_names(field_dict):
 
     return clean_to_unclean
 #--------------------------------------------------------
-class StandardizeNames:
-    def __init__(self, From, Cc, To, remove_if_longer_than=40):
-        self.from_list = From
-        self.cc_list = Cc
-        self.to_list = To
-        self.create_field_dict()
-        self.remove_if_longer_than = remove_if_longer_than
+def print_data(self, nb_to_print=5, max_length=10):
+    self.print_separator()
+    print(">> field_dict <<")
+    print("   Name => Name  (identity operator)")
+    self.print_dict(self.field_dict, nb_to_print, max_length=max_length)
 
-    def clean_name(self, name):
-        return clean_name(name)
+    self.print_separator()
+    print(">> field_dict1 <<")
+    print("   Name => (clean Name, email)")
+    self.print_dict(self.field_dict1, nb_to_print, max_length=max_length)
 
-    def create_field_dict(self):
-        self.field_dict = create_field_dict(self.from_list, self.to_list, self.cc_list)
+    self.print_separator()
+    print(">> email_to_names <<")
+    print("   email => (sequence of clean names)")
+    self.print_dict(self.email_to_names, nb_to_print, max_length=max_length)
 
-    def clean_field_dict_values(self):
-        self.field_dict1, self.unique_names, self.removed, self.unrecognized_names = \
-                clean_field_dict_values(self.field_dict, 
-                remove_if_longer_than=self.remove_if_longer_than)
+    self.print_separator()
+    print(">> names_to_emails <<")
+    print("   name => (sequence of emails)")
+    self.print_dict(self.name_to_emails, nb_to_print, max_length=max_length)
 
-    def clean_to_unclean_names(self):
-        """  string => set """
-        self.clean_to_unclean = clean_to_unclean_names(self.field_dict1)
-        #self.clean_to_unclean.sort(key = lambda x: x)
-        # Given dict: str => set, sort the dictionary keys
+    self.print_separator()
+    print(">> names_without_emails <<")
+    print("   original full names ")
+    self.print_list(self.names_without_emails, nb_to_print)
 
-    def compute_email_name_dicts(self):
-        self.email_to_names, \
-        self.name_to_emails, \
-        self.clean_names_without_emails, \
-        self.clean_names_with_emails = \
-                compute_email_name_dicts(self.field_dict1)
+    self.print_separator()
+    print(">> clean_names_without_emails <<")
+    print("   list of cleaned names without no associated emails")
+    self.print_list(self.clean_names_without_emails, nb_to_print)
+    self.print_separator()
 
-    def get_names_without_emails_from_list(self, name_list):
-        self.names_without_emails = get_names_without_emails_from_list(name_list)
-
-    def get_names_without_emails_from_dict_tuples(self, name_dct):
-        self.names_without_emails = get_names_without_emails_from_dict_tuples(name_list)
-
-    def process(self):
-        self.create_field_dict()
-        self.clean_field_dict_values()
-        self.compute_email_name_dicts()
-        self.get_names_without_emails_from_list(self.field_dict1)
-
-    def print_dict(self, dictionary, nb_to_print, max_length=10):
-        print_dict(dictionary, nb_to_print, max_length=max_length)
-
-    def print_list(self, my_list, nb_to_print):
-        print_list(my_list, nb_to_print)
-
-    def print_separator(self):
-        print("========================================================================================" + 
-              "==========================================")
-
-    def print_data(self, nb_to_print=5, max_length=10):
-        self.print_separator()
-        print(">> field_dict <<")
-        print("   Name => Name  (identity operator)")
-        self.print_dict(self.field_dict, nb_to_print, max_length=max_length)
-
-        self.print_separator()
-        print(">> field_dict1 <<")
-        print("   Name => (clean Name, email)")
-        self.print_dict(self.field_dict1, nb_to_print, max_length=max_length)
-
-        self.print_separator()
-        print(">> email_to_names <<")
-        print("   email => (sequence of clean names)")
-        self.print_dict(self.email_to_names, nb_to_print, max_length=max_length)
-
-        self.print_separator()
-        print(">> names_to_emails <<")
-        print("   name => (sequence of emails)")
-        self.print_dict(self.name_to_emails, nb_to_print, max_length=max_length)
-
-        self.print_separator()
-        print(">> names_without_emails <<")
-        print("   original full names ")
-        self.print_list(self.names_without_emails, nb_to_print)
-
-        self.print_separator()
-        print(">> clean_names_without_emails <<")
-        print("   list of cleaned names without no associated emails")
-        self.print_list(self.clean_names_without_emails, nb_to_print)
-        self.print_separator()
-
-        self.print_separator()
-        print(">> clean_names_with_emails <<")
-        print("   list of cleaned names with associated emails")
-        self.print_list(self.clean_names_with_emails, nb_to_print)
-        self.print_separator()
-
-    def name_matches(self, name_list):
-        self.matches_df = nmlib.name_matches(name_list)
+    self.print_separator()
+    print(">> clean_names_with_emails <<")
+    print("   list of cleaned names with associated emails")
+    self.print_list(self.clean_names_with_emails, nb_to_print)
+    self.print_separator()
+#--------------------------------------------------------
+# MUST BE MODIFED WHEN DEALING WITH LISTS OF LISTS? Check into this.  <<<< 2022-03-12 (Saturday)
+def construct_field_dict2(stand):
+    field_dict2 =  {}
+    for i, (k,v) in enumerate(stand.field_dict1.items()):
+        if v == ():
+            field_dict2[k] = 'invalid'
+        elif v[1] == '':
+            field_dict2[k] = v[0]
+        else:
+            field_dict2[k] = v[1]
+    return field_dict2
 #--------------------------------------------------------
 def clean_lowercase_name(name):
     name = rex.sub('sheilacos4gan', 'sheilacostigan', name)
@@ -1308,6 +1301,15 @@ def clean_lowercase_name(name):
     name = rex.sub('chris4hale', 'christihale', name)
     name = rex.sub('sarahvalen4ne', 'sarahvalentine', name)
     #name = rex.sub('chris_neece4re'   # NOT SURE Might be real. 
+
+    name = rex.sub(r'harreenber4sch', r'harreenbertisch', name) # Harreen Bertisch (legal)
+    name = rex.sub(r'fa4mahjackson', r'fatimahjackson', name)  # Fatimah Jackson
+    name = rex.sub(r'terrydario4s', r'terrydariotis', name) # Terry Dariotis
+    name = rex.sub(r'phelicias4ell', r'pheliciastiell', name) # Phelicias D. Stiell
+    name = rex.sub(r'jus4nbeltran', r'justinbeltran', name)  # Justin Beltran
+    name = rex.sub(r'ka4schardl', r'katischardl', name) # Kati Schardl
+    name = rex.sub(r'frackingcoali4on', r'frackingcoalition', name) # Fracking Coalition
+
 
     return name
 #--------------------------------------------------------
@@ -1393,30 +1395,106 @@ def update_header_list(my_list, field_dict2, stand):
     print("len my_list, new_my_list: ", len(my_list), len(new_my_list))
     return new_my_list
 #--------------------------------------------------------
-# MUST BE MODIFED WHEN DEALING WITH LISTS OF LISTS? Check into this.  <<<< 2022-03-12 (Saturday)
-def construct_field_dict2(stand):
-    field_dict2 =  {}
-    for i, (k,v) in enumerate(stand.field_dict1.items()):
-        if v == ():
-            # print(f"k: {k}, empty value")
-            field_dict2[k] = 'invalid'
-        elif v[1] == '':
-            field_dict2[k] = v[0]
-        else:
-            field_dict2[k] = v[1]
-    return field_dict2
+#--------------------------------------------------------
+class StandardizeNames:
+    def __init__(self, df, remove_if_longer_than=40):
+        self.from_list = df['From'].values.tolist()
+        self.to_list = df['To'].values.tolist()
+        self.cc_list = df['CC'].values.tolist()
+        #self.create_field_dict()
+        self.remove_if_longer_than = remove_if_longer_than
+        self.df = df.copy()  # copy of df
+
+    def clean_name(self, name):
+        return clean_name(name)
+
+    def construct_field_dict2(self):
+        self.field_dict2 = construct_field_dict2(self)
+
+    def create_field_dict(self):
+        print(len(self.from_list), len(self.to_list), len(self.cc_list))
+        self.field_dict = create_field_dict(self.from_list, self.to_list, self.cc_list)
+
+    def clean_field_dict_values(self):
+        self.field_dict1, self.unique_names, self.removed, self.unrecognized_names = \
+                clean_field_dict_values(self.field_dict, 
+                remove_if_longer_than=self.remove_if_longer_than)
+
+    def clean_to_unclean_names(self):
+        """  string => set """
+        self.clean_to_unclean = clean_to_unclean_names(self.field_dict1)
+        #self.clean_to_unclean.sort(key = lambda x: x)
+        # Given dict: str => set, sort the dictionary keys
+
+    def compute_email_name_dicts(self):
+        self.email_to_names, \
+        self.name_to_emails, \
+        self.clean_names_without_emails, \
+        self.clean_names_with_emails = \
+                compute_email_name_dicts(self.field_dict1)
+        print("len(self.email_to_names), len(self.name_to_emails), len(self.clean_names_without_emails), len(self.clean_names_with_emails)")
+        print(len(self.email_to_names), len(self.name_to_emails), len(self.clean_names_without_emails), len(self.clean_names_with_emails))
+
+    def get_names_without_emails_from_list(self, name_list):
+        self.names_without_emails = get_names_without_emails_from_list(name_list)
+
+    def get_names_without_emails_from_dict_tuples(self, name_dct):
+        self.names_without_emails = get_names_without_emails_from_dict_tuples(name_list)
+
+    def update_headers(self):
+        self.new_from_list = update_header_list(self.from_list, self.field_dict2, self)
+        self.new_cc_list = update_header_list_of_lists(self.cc_list, self.field_dict2, self)
+        self.new_to_list = update_header_list_of_lists(self.to_list, self.field_dict2, self)
+
+    def process(self):
+        self.create_field_dict() # (original field, original field)
+        #print("..self.field_dict: ", len(self.field_dict))
+        #print("..self.df: ", self.df.shape, len(self.to_list))
+        print("=> Created field_dict")
+        self.clean_field_dict_values()  
+        print("=> Created field_dict1")
+        self.compute_email_name_dicts()
+        print("=> Created email_to_names and name_to_emails")
+        self.get_names_without_emails_from_list(self.field_dict1)
+        print("=> Created names_without_emails")
+        self.construct_field_dict2()
+        print("=> Created field_dict2")
+        self.update_headers()
+        print("=> Create new (From, To, Cc) headers")
+
+    def output_updated_headers(self, output_file):
+        self.df.From = self.new_from_list
+        self.df.To   = self.new_to_list
+        self.df.CC   = self.new_cc_list
+        self.df.to_csv(output_file, index=0)
+
+    def print_dict(self, dictionary, nb_to_print, min_length=0, max_length=10, is_sorted=True, with_empties=True):
+        print_dict(dictionary, nb_to_print, min_length=min_length, max_length=max_length, is_sorted=is_sorted, with_empties=with_empties)
+
+    def print_list(self, my_list, nb_to_print):
+        print_list(my_list, nb_to_print)
+
+    def print_separator(self):
+        print("==========================================" + 
+              "==========================================" + 
+              "==========================================")
+
+    def print_data(self, nb_to_print=5, max_length=10):
+        print_data(self, nb_to_print, max_length)
+
+    def name_matches(self, name_list):
+        self.matches_df = nmlib.name_matches(name_list)
+#--------------------------------------------------------
+#--------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
+#----------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
 #--------------------------------------------------------
-#--------------------------------------------------------
-#--------------------------------------------------------
-#--------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
