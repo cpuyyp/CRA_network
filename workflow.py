@@ -1,3 +1,12 @@
+# Execute multiple notebooks sequentially from a new notebook
+## !jupyter nbconvert --execute --inplace execute_*.ipynb
+
+!jupyter nbconvert --execute --inplace execute_new_preprocess.ipynb
+!jupyter nbconvert --execute --inplace preprocessing_testing.ipynb
+!jupyter nbconvert --execute --inplace sent_header.ipynb
+!jupyter nbconvert --execute --inplace handle_to_header.ipynb
+!jupyter nbconvert --execute --inplace standardize\ names.ipynb
+!jupyter nbconvert --execute --inplace add_attributes_to_output.ipynb
 
 # Test this
 new_preprocess.ipynb  # not sure)
