@@ -47,7 +47,6 @@ input_file = "output_0211.csv"
 dates_file = "dates.csv"
 date_output_file = "output_dates.csv"
 to_cc_output_file = "output_to_cc.csv"
-to_cc_output_file = "output_to_cc.csv"
 standard_names_output_file = "output_names.csv"
 attributes_stats_output_file = "output_attr_stats.csv"
 without_invalids_output_file = "output_without_invalid_mails.csv"
@@ -58,7 +57,7 @@ without_invalids_output_file = "output_without_invalid_mails.csv"
 
 # File produced by Joey
 df = pd.read_csv(input_file)
-df = df.iloc[0:1000,:]
+df = df.iloc[0:,:]
 
 date = datelib.DateClass()
 sent_lst = df['Sent'].values
@@ -89,8 +88,6 @@ df.to_csv(to_cc_output_file, index=0)
 #================================================================================
 ### standardize\ names.py
 #----------------------------------------------------------------------------------
-
-
 
 # Make sure I read in the original names in the mail list
 # Each member of the Cc: and To: fields are triplets
@@ -170,17 +167,6 @@ print(f"===> Created {attributes_stats_output_file} with sender-level statistics
 #================================================================================
 ### remove invalid rows
 #----------------------------------------------------------------------------------
-
-# import pandas as pd
-#import numpy as np
-#import regex as rex
-#import pandas as pd
-#from datetime import datetime
-#from dateutil import parser
-#from dateutil.tz import gettz
-#from unidecode import unidecode
-#import process_to_library as tolib
-#import standardize_library as standlib
 
 df = pd.read_csv(attributes_stats_output_file)
 

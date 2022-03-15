@@ -1174,7 +1174,7 @@ def compute_email_name_dicts(field_dict):
 
     return email_to_names, name_to_emails, clean_names_without_email, clean_names_with_email
 #--------------------------------------------------------
-def print_dict(dct, n=20, min_length=0, max_length=None, is_sorted=True, with_empties=True):
+def print_dict(dct, n=20, min_length=0, max_length=None, is_sorted=True, with_empties=True, pattern=None):
     print(with_empties)
     if max_length == None: 
         max_length = 100000
@@ -1191,7 +1191,8 @@ def print_dict(dct, n=20, min_length=0, max_length=None, is_sorted=True, with_em
                 continue
             if len(k[1]) > max_length or len(k[1]) < min_length: 
                 continue
-            print(f"{k[0]}______{k[1]}")
+            if pattern and rex.match('.*'+pattern, k[1]):
+                print(f"{k[0]}______{k[1]}")
     else:
         for i, (k,v) in enumerate(dct.items()):
             if i >= n: break
@@ -1397,6 +1398,8 @@ def update_header_list(my_list, field_dict2, stand):
 #--------------------------------------------------------
 #--------------------------------------------------------
 class StandardizeNames:
+    # Read in a file with the following characteristics: 
+    # 
     def __init__(self, df, remove_if_longer_than=40):
         self.from_list = df['From'].values.tolist()
         self.to_list = df['To'].values.tolist()
@@ -1419,6 +1422,13 @@ class StandardizeNames:
         self.field_dict1, self.unique_names, self.removed, self.unrecognized_names = \
                 clean_field_dict_values(self.field_dict, 
                 remove_if_longer_than=self.remove_if_longer_than)
+
+    def analyze_clean_values(self):
+        # input: field_dict, where each input is a single name or email. The name should only 
+        # have letters and digits. 
+        # Do not yet know what to do here. 
+        # analyze_clean_values
+        pass
 
     def clean_to_unclean_names(self):
         """  string => set """
@@ -1468,8 +1478,9 @@ class StandardizeNames:
         self.df.CC   = self.new_cc_list
         self.df.to_csv(output_file, index=0)
 
-    def print_dict(self, dictionary, nb_to_print, min_length=0, max_length=10, is_sorted=True, with_empties=True):
-        print_dict(dictionary, nb_to_print, min_length=min_length, max_length=max_length, is_sorted=is_sorted, with_empties=with_empties)
+    def print_dict(self, dictionary, nb_to_print, min_length=0, max_length=10, is_sorted=True, with_empties=True, pattern=None):
+        print_dict(dictionary, nb_to_print, min_length=min_length, max_length=max_length, is_sorted=is_sorted, 
+                with_empties=with_empties, pattern=pattern)
 
     def print_list(self, my_list, nb_to_print):
         print_list(my_list, nb_to_print)
