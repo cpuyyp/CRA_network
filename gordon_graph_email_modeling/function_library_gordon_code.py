@@ -3,26 +3,10 @@ import regex as rex
 re = rex
 import pandas as pd
 from collections import defaultdict 
+import matplotlib.pyplot as plt
+import networkx as nx
+import cra_function_library as cralib
 
-#----------------------------------------------------------------------------------
-def get_receiver_nodes(df, from_node):
-    rec_nodes = set()
-
-    for lst in df.To:
-        split = lst.split(";")
-        for el in split:
-            if rex.match(r'.*invalid', el): continue
-            if not rex.match(r'.*@', el): continue
-            rec_nodes.add(el)
-
-    for lst in df.CC:
-        split = lst.split(";")
-        for el in split:
-            if rex.match(r'.*invalid', el): continue
-            if not rex.match(r'.*@', el): continue
-            rec_nodes.add(el)
-
-    return rec_nodes
 #----------------------------------------------------------------------------------
 def construct_edges(df, node_list: list):
   """
@@ -80,7 +64,22 @@ def construct_edges(df, node_list: list):
 
   return node_list 
 #------------------------------------------------------------------------------------------------
-def get_Unique_Nodes(df, verbose=False):
+def choose_month_year(df, year, month):
+    min_date = f"{year}-{month}-01"
+    max_date = f"{year}-{month}-31"
+    month_df = df[(df['date_sent'].str.lower() <= max_date) & (df['date_sent'].str.lower() >= min_date)]
+    return month_df
+
+def dict_month_year(df):
+    dct = {}
+    years = [('%4d' % year) for year in range(2008, 2018)]
+    months = [('%02d' % month) for month in range(1,13)]
+    for year in years:
+        for month in months:
+            dct[(year, month)] = choose_month_year(df, year, month)
+    return dct
+#------------------------------------------------------------------------------------------------
+def get_unique_nodes_ge(df, verbose=False, keep_only_emails=True):
   """
   Computes unique set of nodes where nodes are either person's name or email
   Arguments
@@ -88,74 +87,129 @@ def get_Unique_Nodes(df, verbose=False):
   df (DataFrame)
     Email contents with attributes
 
+  verbose (bool)
+    If True, print elements of To: list longer than 50 characterss.
+
+  keep_only_emails (bool)
+    If True, only keep nodes that take the form of an email (contains '@')
+
   Return
   ------
-    node_list (list)
+  node_list (list)
     Sorted list of names for the nodes
+
+  Notes
+  -----
+  The returned nodes include all nodes from From, CC, and To fields. They 
+  are only emails if keep_only_email is true. 
   """
 
-  to_list = df['To']
   from_list = df['From']
+  print("df: ", df.shape)
+  to_list = df['To']
   cc_list = df['CC']
-  node_list = []
+  node_list = set()
+  sender_list = set()
+  to_receiver_list = set()
+  cc_receiver_list = set()
 
   for el in from_list:
       if type(el) == float: continue
-      node_list.append(el)
+      if keep_only_emails and not rex.match(r'.*@', el):
+          continue
+      node_list.add(el)
+      sender_list.add(el)
 
   for lst in cc_list:
       split = lst.split(';')
       for el in split:
           if type(el) == float: continue
-          node_list.append(el)
+          if keep_only_emails and not rex.match(r'.*@', el):
+            continue
+          node_list.add(el)
+          cc_receiver_list.add(el)
 
   for lst in to_list:
       split = lst.split(';')
       for el in split:
           if type(el) == float: continue
-          node_list.append(el)
+          if keep_only_emails and not rex.match(r'.*@', el):
+            continue
+          node_list.add(el)
+          to_receiver_list.add(el)
 
   for el in node_list:
       if verbose and len(el) > 50:
           print(el)
       
-  node_list = sorted(set(node_list))
+  node_list = sorted(node_list)
+  new_node_list = []
 
-  return node_list 
+  """
+  for node in node_list:
+      if keep_only_emails and rex.match(r'.*@', node):
+          #print(node)
+          new_node_list.append(node)
+      elif not keep_only_emails: 
+          new_node_list.append(node)
+  """
+
+  print("sender_list: ",  len(sender_list))
+  print("cc_receiver_list: ",  len(cc_receiver_list))
+  print("to_receiver_list: ",  len(to_receiver_list))
+  print("node_list: ", len(node_list))
+
+  xx = cc_receiver_list.difference(sender_list)
+  yy = to_receiver_list.difference(sender_list)
+  print("in cc but not in sender = cc - sender: ", len(xx))
+  print("in to but not in sender = to - sender: ", len(yy))
+
+  return new_node_list 
 #------------------------------------------------------------------------------------------------
-def make_edges_ge(df):
-    """
-    Construct graph edges. 
+def get_receiver_nodes(df, from_node, keep_only_emails=True, headers_as_list=False):
+    """ 
+    Compute list of nodes connected to from_node. 
 
     Arguments
     ---------
     df (DataFrame)
-        Dataframe containing all email data and attributes
+        DataFrame that contains all relevant email data.
+
+    from_node (string or int)
+        Each edges goes from from_node to the nodes returned in rec_nodes
+
+    keep_only_emails (bool)
+        If True, all receiver nodes have an associated email. 
+        If False, receivers might be an email ('@') or a name (no '@')
 
     Return
     ------
-    edges (dictionary)  sender_node => list(receiver nodes)
-        The keys and values are a list of strings. 
-
-    Notes
-    -----
-    Edges are only formed from nodes that have associated emails.
-
-    TODO
-    ----
-    - Add an option to return nodes and edges as integers for faster 
-      execution
-
+    rec_nodes (set)
+        return a set of receiver nodes, each connected to from_node
     """
-    dfg = emails.groupby('From')
-    edges = defaultdict(set)
+    rec_nodes = set()
 
-    for from_node in dfg.size().index:
-        if not rex.match(r'.*@', from_node):
-            continue
-        db = dfg.get_group(from_node)
-        edges[from_node] = funclib.get_receiver_nodes(db, from_node)
-    return edges
+    for lst in df.To:
+        if headers_as_list:
+            split = lst
+        else:
+            split = lst.split(";")
+        for el in split:
+            if rex.match(r'.*invalid', el): continue
+            if keep_only_emails and not rex.match(r'.*@', el): continue
+            rec_nodes.add(el)
+
+    for lst in df.CC:
+        if headers_as_list:
+            split = lst
+        else:
+            split = lst.split(";")
+        for el in split:
+            if rex.match(r'.*invalid', el): continue
+            if keep_only_emails and not rex.match(r'.*@', el): continue
+            rec_nodes.add(el)
+
+    return rec_nodes
 #------------------------------------------------------------------------------------------------
 def make_edgelist(df, nodes):
   """
@@ -1418,9 +1472,172 @@ def new_train(G, model, mask, loss_fn, optimizer, nb_epochs):
 
     return losses, accuracy_count
 #--------------------------------------------------------------------------------
+def remove_outliers(df, nb_std):
+    """
+    return
+    ------
+    b: DataFrame
+        df with rescaled nb_words and nb_chars. 
+        Note that I should recalculate the means and std per sender. NOT DONE. 
+
+    tab_b: DataFrame  (no longer returned)
+        This data frame contains mean, median, std, mad, max, size of input data frame. 
+        With this information, the original data (i.e., the input dataframe (df) with the 
+        outliers removed) can be reconstructed. 
+
+    Notes
+    -----
+    Consider scaling as x / max(x), which is between 0 and 1. Note that min(x) is zero.
+    Apply this caling once the outliers are removed. 
+    """
+    df = df.copy()
+    cols = ["nb_words", "nb_chars"]
+    tab = df[cols].agg(["mean", "median", "std", "mad", "max", "size"])
+
+    stdc, stdw       = tab.loc["std", ["nb_chars", "nb_words"]]
+    madc, madw       = tab.loc["mad", ["nb_chars", "nb_words"]]
+    meanc, meanw     = tab.loc["mean", ["nb_chars", "nb_words"]]
+    medianc, medianw = tab.loc["median", ["nb_chars", "nb_words"]]
+    maxc, maxw       = tab.loc["max", ["nb_chars", "nb_words"]]
+    print("max nb words: ", maxw, df['nb_words'].max())
+    print("max nb chars: ", maxc, df['nb_chars'].max())
+
+    b = df[(df["nb_chars"] < (medianc + 3 * madc)) & (df["nb_words"] < (medianw + 3 * madw))]
+
+    # Normalize by dividing by the maximum value. This works when values are positive. 
+    tab_b = b[cols].agg(["mean", "median", "std", "mad", "max", "size"])
+    maxc, maxw = tab_b.loc["max", ["nb_chars", "nb_words"]]
+
+    #tab_b = b[cols].agg(["mean", "median", "std", "mad", "max", "size"])
+    #meanw, meanc = tab_b.loc["mean", ["nb_words", "nb_chars"]]
+    #stdw, stdc = tab_b.loc["std", ["nb_words", "nb_chars"]]
+
+    #b['nb_words'] = (b['nb_words'] - meanw) / stdw
+    #b['nb_chars'] = (b['nb_chars'] - meanc) / stdc
+
+    print("max nb words: ", b['nb_words'].max())
+    print("max nb chars: ", b['nb_chars'].max())
+    print("maxw, maxc: ", maxw, maxc)
+
+    b['nb_words'] = b['nb_words'] / maxw
+    b['nb_chars'] = b['nb_chars'] / maxc
+
+    print("max nb words: ", b['nb_words'].max())
+    print("max nb chars: ", b['nb_chars'].max())
+
+
+    #print("nb_words mean: ", b['nb_words'].mean())  # should be zero. Is -0.7 (wrong)
+    #print("nb_words std: ", b['nb_words'].std())  # should be one. Is 0.18 (wrong)
+    #print("nb_chars mean: ", b['nb_chars'].mean()) # = 4.06 (wrong)
+    #print("nb_chars std: ", b['nb_chars'].std())  # = 5.5   (wrong)
+
+    return b
 #--------------------------------------------------------------------------------
+def make_edges_ge(df, keep_only_emails=True, headers_as_list=False):
+    """
+    Construct graph edges. 
+
+    Arguments
+    ---------
+    df (DataFrame)
+        Dataframe containing all email data and attributes
+
+    Return
+    ------
+    edges (dictionary)  sender_node => list(receiver nodes)
+        The keys and values are a list of strings. 
+
+    index_values (set)
+        List of indexes of all rows where both the sender and one of the 
+        receipients have an email (contains '@')
+
+    headers_as_list (bool)
+        If True, the To and CC fields are list of recipients.  
+        If False,these fields have the string type: names/emails separated by semi-colons.
+
+
+    Notes
+    -----
+    Edges are only formed from nodes that have associated emails.
+
+    TODO
+    ----
+    - Add an option to return nodes and edges as integers for faster 
+      execution
+
+    """
+    dfg = df.groupby('From')
+    nodes_with_edges = defaultdict(set)
+    index_values = set()
+
+    for from_node in dfg.size().index:
+        if keep_only_emails and not rex.match(r'.*@', from_node):
+            continue
+        if not type(from_node) == str:
+            continue
+        db = dfg.get_group(from_node)
+        index_values = index_values.union(list(db.index))
+        nodes_with_edges[from_node] = get_receiver_nodes(db, from_node, keep_only_emails=keep_only_emails, headers_as_list=headers_as_list)
+
+    # Create a list of edges as a list of tuples (node1, node2)
+
+    edges = []
+    for n, e in nodes_with_edges.items():
+        for receiver in e:
+            edges.append([n, receiver])
+
+    return edges, index_values
+#----------------------------------------------------------------------------------
+def create_nodes_edges_ge(df, keep_only_emails):
+    """
+    Return
+    ------
+    df: (DataFrame)
+        DataFrame of possibly a reduced size
+    """
+    print("df: ", df.shape)   # [104, 31]
+    df['index'] = df.index.values # records of original file read-in
+    print("df: ", df.shape)   # [104, 31]
+    nodes = get_unique_nodes_ge(df, verbose=False, keep_only_emails=keep_only_emails)
+    edges, index_values = make_edges_ge(df, keep_only_emails=keep_only_emails)
+    df = df.loc[index_values]
+
+    # From df, construct a data frame grouped by From. One should have len(nodes) = dfg.shape[0]
+    dfg = df.groupby('From')[['nb_words','nb_chars']].agg(['mean','std'])
+    print(dfg.columns)
+    print("dfg: ", dfg.shape)   # [23, 4] 
+    print("df: ", df.shape)   # [104, 31]
+    print("len(nodes): ", len(nodes))  # 69  (should equal dfg.shape[0] = 23) WHAT IS WRONG? 
+    print(dfg.head(50))
+    sor = sorted(nodes)
+    for s in sor:
+        print(s)
+    return df, nodes, edges
 #--------------------------------------------------------------------------------
+def save_nodes_edges(nodes, edges, node_file="nodes.txt", edge_file="edges.txt"):
+    edges_df = pd.DataFrame(data=edges, columns=['node1', 'node2'])
+    edges_df.to_csv(edge_file, index=0)
+    # Same result
+
+    nodes_df = pd.DataFrame({'nodes':nodes})
+    nodes_df.to_csv(node_file, index=0)
 #--------------------------------------------------------------------------------
+def plot_emails_one_year(dct_month_year, year):
+    fig, axes = plt.subplots(4,3,figsize=(12,14))
+    axes = axes.flatten()
+    months = ['%02d' % month for month in range(1,13)]
+    for i, month in enumerate(months):
+        ax = axes[i]
+        G = nx.DiGraph()
+        month_df = dct_month_year[year, month]
+        df, nodes, edges = create_nodes_edges_ge(month_df, keep_only_emails=True)
+        G.add_nodes_from(nodes)
+        G.add_edges_from(edges)
+        cralib.add_features(G, month_df)
+        nx.draw_shell(G, node_size=10, ax=ax)
+        ax.set_title(f"{year}/{month}, {G.nb_nodes}/{G.nb_edges}")
+        # if i > 2: break
+    plt.tight_layout()
 #--------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------
