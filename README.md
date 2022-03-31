@@ -229,5 +229,10 @@ timestamp: float
 	will allow temporal algorithms to be applied easily.
 
 #-------------------------------------------------------------
-2022-03-16
-- W
+2022-03-31
+- When I run the code multiple times to generate the output_attr_stats.csv file, the order of names in CC: and TO: sometimes changes, but all else
+remains the same. The reasson is likely my use of sets where the order of names is not guaranteed. Alternatively, it my have to do with the use of 
+random permutations (not sure) which will be different for different runs. One checks whether this is the case by executing the "wc file_name" on 
+the commandline, which gives the total number of lines, words and characters. 
+#-------------------------------------------------------------
+#-------------------------------------------------------------
